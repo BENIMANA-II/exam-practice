@@ -201,15 +201,24 @@ responsibility.
                                             return the new plaintext code ONCE so the user can save it
                                             (the old code is invalidated). Validate newPassword the same
                                             way as registration
-   - POST   /api/[entity1route]          — insert [Entity1] (INSERT only)
+   - POST   /api/[entity1route]          — insert [Entity1]
    - GET    /api/[entity1route]          — get all [Entity1] records
-   - POST   /api/[entity2route]          — insert [Entity2] (INSERT only)
+   - PUT    /api/[entity1route]/:id      — update a [Entity1] record
+   - DELETE /api/[entity1route]/:id      — delete a single [Entity1] RECORD
+                                            (row-level only; NOT the project/database)
+   - POST   /api/[entity2route]          — insert [Entity2]
    - GET    /api/[entity2route]          — get all [Entity2] records
+   - PUT    /api/[entity2route]/:id      — update a [Entity2] record
+   - DELETE /api/[entity2route]/:id      — delete a single [Entity2] RECORD
+                                            (row-level only; NOT the project/database)
    - POST   /api/[entity3route]          — insert [Entity3]
    - GET    /api/[entity3route]          — get all [Entity3] records
    - PUT    /api/[entity3route]/:id      — update a [Entity3] record
    - DELETE /api/[entity3route]/:id      — delete a single [Entity3] RECORD
                                             (row-level only; NOT the project/database)
+   EVERY domain entity must expose this same POST/GET/PUT/DELETE set — no
+   "INSERT-only" entities. If you choose more or fewer entities, repeat the
+   four-route pattern for each one.
    - GET    /api/reports/dashboard      — single aggregation powering DashboardPage: returns the
                                             stat-card metrics (counts + at least one SUM/AVG), the
                                             summary-block rows (e.g. recent records or per-item totals),
@@ -365,17 +374,22 @@ responsibility.
         loading/error/empty states
       - Uses the shared Navbar and PageWrapper like the other protected pages
 
-   f. [Entity1]Page (route: /[entity1route])
+   f. [Entity1]Page (route: /[entity1route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
       - Form fields: [list all Entity1 fields with types and constraints]
       - [If computed field exists]: auto-calculate and display read-only below the inputs
-      - Below form: shadcn Table showing all [Entity1] records
-      - INSERT only — no edit or delete actions
+      - Below form: shadcn Table showing all [Entity1] records with Edit (Pencil icon)
+        and Delete (Trash2 icon) per row
+      - Edit opens a pre-filled shadcn Dialog modal
+      - Delete shows shadcn AlertDialog confirmation, then DELETEs that single record only
+        (this removes one row from the collection — it must never delete the project or database)
 
-   g. [Entity2]Page (route: /[entity2route])
+   g. [Entity2]Page (route: /[entity2route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
       - Form fields: [Entity1] dropdown (populated from API), [list remaining fields]
       - [dateField] must not be in the future (client-side: max = today's date)
-      - Below form: shadcn Table showing all [Entity2] records
-      - INSERT only — no edit or delete actions
+      - Below form: shadcn Table with Edit (Pencil icon) and Delete (Trash2 icon) per row
+      - Edit opens a pre-filled shadcn Dialog modal
+      - Delete shows shadcn AlertDialog confirmation, then DELETEs that single record only
+        (this removes one row from the collection — it must never delete the project or database)
 
    h. [Entity3]Page (route: /[entity3route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
       - Form fields: [Entity1] dropdown, [list all fields with types and constraints]
@@ -385,6 +399,9 @@ responsibility.
       - Edit opens a pre-filled shadcn Dialog modal
       - Delete shows shadcn AlertDialog confirmation, then DELETEs that single record only
         (this removes one row from the collection — it must never delete the project or database)
+
+   EVERY domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog)
+   pattern — there are no INSERT-only pages.
 
    i. ReportsPage (route: /reports)
       - Use shadcn Tabs component with ONE TAB PER REPORT — one tab for each report described in
@@ -466,8 +483,8 @@ responsibility.
     * Recovery verify failure ("Invalid details") and password reset success ("Password reset — sign in")
     * Logout ("You have been logged out")
     * Create [Entity1] / [Entity2] / [Entity3] success ("[Entity] added successfully") and failure
-    * Update [Entity3] success ("[Entity3] updated successfully") and failure
-    * Delete [Entity3] success ("[Entity3] deleted") and failure
+    * Update [Entity1] / [Entity2] / [Entity3] success ("[Entity] updated successfully") and failure
+    * Delete [Entity1] / [Entity2] / [Entity3] success ("[Entity] deleted") and failure
     * Any client-side validation block that prevents submission (e.g. "Please fix the highlighted
       fields") — optional but recommended in addition to inline field errors
     * Network/server-unreachable errors ("Unable to connect to the server. Please try again.")
@@ -534,8 +551,8 @@ src/api/axiosClient.js:
   - Response interceptor: if status 401, redirect to /login
 
 src/api/authAPI.js         — register(), login(), logout(), getMe(), recoverVerify(), recoverReset()
-src/api/[entity1]API.js    — create[Entity1](), getAll[Entity1]s()
-src/api/[entity2]API.js    — create[Entity2](), getAll[Entity2]s()
+src/api/[entity1]API.js    — create[Entity1](), getAll[Entity1]s(), update[Entity1](), delete[Entity1]()
+src/api/[entity2]API.js    — create[Entity2](), getAll[Entity2]s(), update[Entity2](), delete[Entity2]()
 src/api/[entity3]API.js    — create[Entity3](), getAll[Entity3]s(), update[Entity3](), delete[Entity3]()
 src/api/reportsAPI.js      — one fetch function per report (e.g. getDailySalesSummary(), etc.)
 
@@ -659,13 +676,28 @@ adapt them to whatever each described report actually needs:
   of rows at once.
 - Format values for humans: dates in a readable locale format, numbers/currency with separators,
   booleans/enums as shadcn Badges with the accent palette.
-- The edit/delete-enabled entity table shows per-row Edit (Pencil) and Delete (Trash2) actions exactly
-  as specified for that page; delete always goes through the AlertDialog confirmation.
+- EVERY entity table shows per-row Edit (Pencil) and Delete (Trash2) actions; Edit opens a pre-filled
+  shadcn Dialog modal, and Delete always goes through the AlertDialog confirmation before calling the
+  record-level DELETE endpoint.
 
 === REUSABILITY RULES ===
 - Don't repeat UI: build small reusable pieces (e.g. PageWrapper for max-width/padding, FormField that
   pairs Label + Input + inline error, DataTable for the shared table behavior, ConfirmDialog wrapping
   AlertDialog, StateBlock for loading/error/empty). Pages compose these rather than re-implementing them.
+- COMPONENT DEFINITION RULE (prevents input-focus loss): EVERY React component — especially FormField,
+  DataTable, ConfirmDialog, PageWrapper, and any small wrapper around Input/Textarea/Select — MUST be
+  declared at MODULE TOP LEVEL (or in its own file), NEVER inside another component's function body and
+  NEVER inside JSX. Defining a component inside a parent creates a brand-new component identity on
+  every render, which makes React unmount and remount the input on every keystroke — the input loses
+  focus and the user can only type one character at a time. Same rule for components passed via props:
+  pass element trees (<MyForm />) or stable references, not freshly-declared functions. Do NOT create
+  components inline with arrow functions inside render. Inside a page component you may declare local
+  handlers/values, but NEVER `const FormField = (...) => ...` or `function FormField(...) {...}`.
+- Keep input identity stable across renders: use stable keys derived from the data (e.g. record._id),
+  never Math.random()/Date.now()/array index for inputs that re-render. Define static options arrays
+  and validation regexes at module scope (or memoize with useMemo) so they don't get a new reference
+  every render. Controlled inputs must always have a defined `value` (never undefined → defined, which
+  remounts the input as uncontrolled→controlled).
 - Centralize cross-cutting concerns: validation regexes/helpers in one module (shared by all forms),
   formatting helpers (date/number) in one module, route paths and option lists as named constants.
 - Reuse the api modules and AuthContext everywhere; never duplicate axios calls or the /me check inline.
@@ -914,7 +946,7 @@ Frontend:
   /login and the RegisterPage is at /register. Do not gate any of these three behind ProtectedRoute.
   After login/registration the user lands on /dashboard (protected).
 - Do NOT suggest or include any feature for deleting the project, dropping the database, or
-  bulk-wiping collections. The only deletion permitted is a single record (the edit/delete-enabled
-  entity) via DELETE /api/[that entity's route]/:id.
+  bulk-wiping collections. The only deletion permitted is a single record on any entity, via
+  DELETE /api/[that entity's route]/:id — never a multi-record or whole-collection wipe.
 - Do NOT end by recommending similar projects, alternative project ideas, or "next steps you
   could build." Stop once the assumptions, ERD, README, and all the files are delivered.

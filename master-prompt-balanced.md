@@ -122,9 +122,11 @@ before saving — never trust the client to send computed values.
        generic error on mismatch; throttle attempts (a 4-digit code is only 10,000 combinations).
    - POST /api/auth/recover/reset   — { username|email, recoveryCode, newPassword }; re-verify the code, then hash
        and save newPassword; issue a NEW 4-digit code (old invalidated) returned once.
-   - POST/GET /api/[entity1route] ;  POST/GET /api/[entity2route]   (INSERT + list only)
+   - POST/GET /api/[entity1route] ;  PUT /api/[entity1route]/:id ;  DELETE /api/[entity1route]/:id
+   - POST/GET /api/[entity2route] ;  PUT /api/[entity2route]/:id ;  DELETE /api/[entity2route]/:id
    - POST/GET /api/[entity3route] ;  PUT /api/[entity3route]/:id ;  DELETE /api/[entity3route]/:id
-       (deletes a single record only — row-level; never the project or database)
+       (every DELETE removes a single record only — row-level; never the project or database.
+        EVERY domain entity exposes this same POST/GET/PUT/DELETE set — no INSERT-only entities.)
    - GET /api/reports/dashboard  — one aggregation returning the stat-card metrics (counts + at least one SUM/AVG),
        the summary-block rows, and the chart TIME SERIES (an ordered array of { date/label, value } points).
    - GET /api/reports/<reportSlug>  — one endpoint per report; runs that report's MongoDB aggregation.
@@ -191,15 +193,20 @@ Pages:
        (last >= first) use --color-trend-up (#44cf6c); if a downfall (last < first) use --color-trend-down (#A20021);
        keep the dots consistent with the line color.
      - All data comes from GET /api/reports/dashboard; show loading/error/empty states. Uses the Navbar and PageWrapper.
-  f. [Entity1]Page (route /[entity1route]): form fields per Entity1; auto-calculate and show read-only any computed
-     field; below the form, a shadcn Table of all records. INSERT only.
-  g. [Entity2]Page (route /[entity2route]): an [Entity1] dropdown (populated from the API) plus the remaining fields;
-     date fields max = today; a Table of all records. INSERT only.
+  f. [Entity1]Page (route /[entity1route]) — INSERT, SELECT, UPDATE, and record-level DELETE: form fields per Entity1;
+     auto-calculate and show read-only any computed field; below the form, a shadcn Table with per-row Edit (Pencil)
+     and Delete (Trash2). Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that
+     one record only (never the project/database).
+  g. [Entity2]Page (route /[entity2route]) — INSERT, SELECT, UPDATE, and record-level DELETE: an [Entity1] dropdown
+     (populated from the API) plus the remaining fields; date fields max = today; a Table with per-row Edit (Pencil)
+     and Delete (Trash2). Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that
+     one record only (never the project/database).
   h. [Entity3]Page (route /[entity3route]) — INSERT, SELECT, UPDATE, and record-level DELETE: an [Entity1] dropdown +
      all fields; if a quantity-vs-stock rule applies, the quantity must not exceed the selected [Entity1]'s available
      stock (fetch stock when the dropdown changes); date fields max = today; a Table with per-row Edit (Pencil) and
      Delete (Trash2). Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that one
      record only (never the project/database).
+  EVERY domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog) pattern — no INSERT-only pages.
   i. ReportsPage (route /reports): shadcn Tabs, ONE TAB PER REPORT (those in the brief, or the two you designed), each
      rendering its results in a shadcn Table with that report's columns and a filter control (default: a date picker =
      today). Empty state with a lucide icon when no data. Each report has a Print button (lucide Printer, window.print())
@@ -235,7 +242,7 @@ in a green-styled default Alert. Show Loader2 (spin) inside the Submit button wh
 === TOAST NOTIFICATIONS (one per action result) ===
 Use sonner: trigger toast.success/error/info on the RESULT of EVERY action (in addition to inline Alerts) — login,
 register, logout, recovery-code generated ("Save your recovery code — it won't be shown again"), code copied/downloaded,
-recover-verify failure, password reset, create/update/delete per entity (success + failure), validation blocks, and
+recover-verify failure, password reset, create/update/delete on EVERY entity (success + failure), validation blocks, and
 network errors. One toast per result, auto-dismiss, dismissible, optional lucide icon, no emoji. <Toaster/> mounted once in App.jsx.
 
 === DESIGN & UI RULES ===
@@ -263,7 +270,7 @@ network errors. One toast per result, auto-dismiss, dismissible, optional lucide
 src/api/axiosClient.js: baseURL = import.meta.env.VITE_API_URL or http://localhost:5000/api; withCredentials:true; a
   response interceptor that redirects to /login on 401.
 authAPI.js: register, login, logout, getMe, recoverVerify, recoverReset.
-[entity1..3]API.js: create/getAll (plus update/delete for entity3). reportsAPI.js: one fetcher per report + getDashboard().
+[entity1..3]API.js: create/getAll/update/delete for every entity. reportsAPI.js: one fetcher per report + getDashboard().
 Each function is async, calls axiosClient, and returns the { data } payload (response.data.data); it throws so the
 caller's catch shows the { error } message. AuthContext wraps authAPI and exposes auth via useAuth(); auth UI uses
 useAuth(); entity/report pages call their api modules directly.
@@ -322,8 +329,9 @@ on mount (loading/disabled until ready) and refetch on selection change. Network
 All record tables use the shadcn Table in overflow-x-auto. Provide column headers, zebra/hover styling using the accent,
 and the loading/empty states. A client-side search box above each table; sortable columns (clicking a header toggles
 asc/desc with a chevron); pagination (or lazy loading) when a table can exceed ~25 rows. Human-format values (dates,
-numbers/currency with separators, booleans/enums as accent Badges). The entity3 table has per-row Edit/Delete; delete
-always goes through the AlertDialog confirmation.
+numbers/currency with separators, booleans/enums as accent Badges). EVERY entity table has per-row Edit/Delete; Edit
+opens a pre-filled Dialog and Delete always goes through the AlertDialog confirmation before calling the record-level
+DELETE endpoint.
 
 === REUSABILITY ===
 Build small reusable pieces (PageWrapper for max-width/padding, FormField = Label + Input + inline error, DataTable for
@@ -331,6 +339,16 @@ shared table behavior, ConfirmDialog wrapping AlertDialog, StateBlock for loadin
 Centralize cross-cutting concerns: validation regexes/helpers in one module, formatting helpers (date/number) in one
 module, route paths and option lists as named constants. Reuse the api modules and AuthContext everywhere; never duplicate
 axios calls or the /me check. A change to a shared rule should require editing ONE place.
+
+COMPONENT DEFINITION RULE (prevents input-focus loss): EVERY React component — especially FormField, DataTable,
+ConfirmDialog, PageWrapper, and any wrapper around Input/Textarea/Select — MUST be declared at MODULE TOP LEVEL
+(or in its own file), NEVER inside another component's function body and NEVER inline in JSX. Defining a component
+inside a parent creates a new component identity on every render, so React unmounts and remounts the input on every
+keystroke — the input loses focus and the user can only type one character at a time. Do NOT write
+`const FormField = (...) => ...` (or `function FormField`) inside a page component. Keep input identity stable:
+controlled inputs always have a defined `value` (never undefined→defined, which remounts the input);
+use stable keys from data (record._id), never Math.random()/Date.now()/array index; declare static options and
+validation regexes at module scope (or useMemo) so they don't get a new reference each render.
 
 === SECURITY ===
 Passwords and recovery codes are ALWAYS bcrypt-hashed — never plaintext, never logged, never returned (except the one-time
@@ -443,5 +461,5 @@ Frontend:
 - LandingPage (/) is public with no session; LoginPage /login, RegisterPage /register, and RecoverPage /recover are public
   too. After login/registration the user lands on /dashboard.
 - Do NOT include any feature to delete the project, drop the database, or bulk-wipe collections. The only deletion permitted
-  is a single entity3 record via DELETE /api/[entity3route]/:id.
+  is a single record on any entity via DELETE /api/[that entity's route]/:id — never multi-record or whole-collection.
 - Do NOT end with similar-project suggestions or "next steps." Stop once the assumptions, ERD, README, and all files are delivered.
