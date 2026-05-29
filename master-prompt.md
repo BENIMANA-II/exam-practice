@@ -8,6 +8,10 @@ Company/organization (optional): ______________________________
 Database name (optional):      ______________________________
 Entities to use (optional):    ______________________________
   (e.g. "Student, Invoice, Payment"; leave blank to let the AI choose)
+Layout style (optional):       ______________________________
+  (e.g. "minimal", "editorial", "playful", "corporate", "bold", "modern"; leave blank
+   to let the AI choose an aesthetic that fits the domain. This is a nudge for the
+   public pages — Landing/Login/Register/Recover — not a strict template.)
 
 Reports required (optional — list each report; copy the block for more, leave blank to let the AI design 2):
   Report 1
@@ -271,22 +275,36 @@ responsibility.
 4. Build the following pages:
 
    a. LandingPage (route: /)  ← PUBLIC, no auth required
-      - A marketing-style page that showcases [SYSTEM NAME] for [COMPANY/ORGANIZATION NAME]
-      - Hero section: system name as headline, a one-line value proposition subheading,
-        and a primary CTA button "Sign In" (lucide ArrowRight icon) that routes to /login
-      - Brief "About" paragraph describing what the system does for [COMPANY/ORGANIZATION NAME]
-      - Features section: a responsive grid of shadcn Cards (md:grid-cols-3) — one Card per
-        core capability, each with a lucide icon, a short title, and a one-sentence description
-        (e.g. managing [Entity1], recording [Entity2], tracking [Entity3], and viewing Reports)
-      - "How it works" section: a numbered 3-4 step flow shown as Cards or a simple ordered list
-        styled with the design tokens (sign in → manage records → record transactions → view reports)
-      - Footer: [COMPANY/ORGANIZATION NAME] name, current year, and a secondary "Sign In" link
-      - Fully responsive (stacks to single column on mobile), uses ONLY the CSS-variable palette
-        and the global font, lucide icons only, no emoji, no placeholder lorem-ipsum text
-      - This page must NOT be wrapped in ProtectedRoute and must NOT call any protected API
-      - The shared Navbar is NOT rendered here; the LandingPage has its own minimal top bar
-        containing the system name on the left and, on the right, a light/dark theme toggle
-        (lucide Sun / Moon) plus a "Sign In" button
+      - A marketing-style page that showcases [SYSTEM NAME] for [COMPANY/ORGANIZATION NAME].
+        DO NOT default to the same generic hero + about + 3-card grid + "how it works" + footer
+        recipe every time. Choose a layout that fits the domain and the optional "Layout style"
+        from the brief — for example a split-screen (copy left, visual/stat right), a full-bleed
+        statement page, a stat strip, an editorial long-form layout, a side-panel + content
+        layout, a classic hero + feature cards, or another shape you design. The layout MUST
+        look meaningfully different from the AI's default each run.
+      - Required behavior (independent of the layout you choose):
+          * The system name and a one-line value proposition for [COMPANY/ORGANIZATION NAME] are present
+          * A primary CTA "Sign In" (lucide ArrowRight icon) that routes to /login is present and obvious
+          * The page communicates what the system does for the organization and the core
+            capabilities it offers (managing [Entity1], recording [Entity2], tracking [Entity3],
+            and viewing Reports) — express these however the chosen layout best supports
+            (cards, a list, callout blocks, sectioned copy, a stat strip, etc.)
+          * Fully responsive (collapses gracefully on mobile), uses ONLY the CSS-variable palette
+            and the global font, lucide icons only, no emoji, no placeholder lorem-ipsum text
+          * This page must NOT be wrapped in ProtectedRoute and must NOT call any protected API
+          * The shared Navbar is NOT rendered here; the LandingPage has its own minimal top bar
+            containing the system name on the left and, on the right, a light/dark theme toggle
+            (lucide Sun / Moon) plus a "Sign In" button
+          * Both light and dark themes render correctly, using the design tokens throughout
+
+   a2. PUBLIC PAGES MUST LOOK DISTINCTIVE
+      The public pages (LandingPage, LoginPage, RegisterPage, RecoverPage) must look meaningfully
+      different from one another and reflect the system's domain. They are NOT all the same
+      centered card on a plain background. Pick layouts that suit the project — split-screen,
+      full-bleed, editorial, stat strip, single-statement, classic card, side-panel, etc. — while
+      still using the design tokens (palette, font, accent), respecting accessibility (contrast,
+      focus, labels), and using shadcn/ui components for interactive elements. Coherence with the
+      authenticated app's tokens stays; visual sameness across the four public pages does NOT.
 
    b. LoginPage (route: /login)
       - Fields: Username, Password with show/hide toggle (Eye / EyeOff lucide icons)
@@ -362,13 +380,16 @@ responsibility.
         such as daily revenue over the last N days), with a time-based X axis and the value on the Y
         axis. Render responsively (ResponsiveContainer), and include axes, grid, tooltip, and a legend
         if multiple series. Do not use bar, pie/donut, or other chart types for this dashboard chart.
-      - The line color is TREND-BASED: compute the trend by comparing the last data point's value to
-        the first data point's value over the displayed range. If the trend is up or flat (last >=
-        first) color the line with the "trend up" token (--color-trend-up: #44cf6c); if it is a
-        downfall (last < first) color it with the "trend down" token (--color-trend-down: #A20021).
-        Define both as CSS variables (per DESIGN & UI RULES — no inline hex); choose the stroke from
-        these two tokens based on the computed trend. Keep the dot/active-dot stroke consistent with
-        the chosen line color.
+      - The line color is TREND-BASED, applied PER SEGMENT (not as a single color for the whole line).
+        For each pair of consecutive points (p[i-1] → p[i]), color the segment between them with the
+        "trend up" token (--color-trend-up: #16A34A) if p[i].value >= p[i-1].value, otherwise with the
+        "trend down" token (--color-trend-down: #DC2626). The line therefore reads as a sequence of
+        short green/red segments that reflect each step's direction, not one whole-line color computed
+        from first-vs-last. Implementation in recharts: render the chart as multiple short <Line>
+        series (one per segment, each two points long, stroke driven by the segment's trend token), or
+        provide a per-segment stroke callback — whichever cleanly produces the same per-segment colors.
+        Keep the dot/active-dot stroke consistent with each segment's own color. Both tokens are CSS
+        variables defined per DESIGN & UI RULES — no inline hex.
       - All dashboard data comes from a single real aggregation endpoint GET /api/reports/dashboard
         (returns the stat-card metrics, the summary-block rows, and the chart time series); show
         loading/error/empty states
@@ -500,14 +521,14 @@ responsibility.
   Example variables: --color-bg, --color-surface, --color-accent, --color-text, --color-muted,
   --color-danger, --color-success. Use ONLY these variables — never hardcode hex values inline.
   Also define the dashboard trend tokens with these exact values:
-    --color-trend-up: #44cf6c;    (line color when the metric is trending up or flat)
-    --color-trend-down: #A20021;  (line color when the metric is in downfall)
+    --color-trend-up:   #16A34A;  (segment color when value rose vs the previous point)
+    --color-trend-down: #DC2626;  (segment color when value fell vs the previous point)
 - LIGHT & DARK MODE: the app supports both themes via a `dark` class on the root <html> element
   (Tailwind v3 darkMode: 'class'). Define every palette token for BOTH themes — the light values
   on :root and the dark overrides under the `.dark` selector — so all colors come from tokens and
   switch automatically with the theme. The page background token MUST use these exact values:
     light mode  --color-bg: #F6F8FF;
-    dark mode   --color-bg: #272D2D;
+    dark mode   --color-bg: #0A0A0A;
   Pick the remaining tokens (surface, text, muted, accent, etc.) to pair tastefully and meet the
   contrast rule in ACCESSIBILITY for BOTH themes (the trend tokens above stay the same in both).
 - Theme control: provide a theme toggle (lucide Sun / Moon icons) in the Navbar that switches between
@@ -519,21 +540,27 @@ responsibility.
   best with the #F6F8FF / #272D2D backgrounds and the contrast rule, and use it consistently:
     #094074   or   #0D2149   or   #003F91
   Set --color-accent to the chosen hex (you may use a slightly lighter tint of it in dark mode for
-  contrast, but the base accent is one of these three). The accent must be used consistently for:
+  contrast against the #0A0A0A background, but the base accent is one of these three). The accent must be used consistently for:
   active nav link, primary buttons, focus rings, table row highlights, and badge backgrounds.
 - No purple gradients on white backgrounds.
 - No emoji — use only lucide-react icons with consistent sizing (size={16} or size={18}).
 - Typography: use a distinctive non-generic font loaded via Google Fonts
   (good choices: DM Mono, Syne, Instrument Sans, Plus Jakarta Sans, Space Grotesk alternatives
   like Outfit or Figtree — pick one and apply it globally).
-- All forms use identical padding (p-6), gap between fields (gap-4), label style, and input height.
-- All pages use the same page wrapper class for consistent max-width and horizontal padding.
+- Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical
+  padding (p-6), gap between fields (gap-4), label style, and input height for visual coherence
+  inside the working app. This uniformity rule applies ONLY to entity forms, NOT to the public
+  auth pages. LoginPage, RegisterPage, and RecoverPage may use any layout that suits the design
+  (split-screen, side-panel, full-bleed, centered card, editorial, etc.) as long as they meet the
+  ACCESSIBILITY rules and use the design tokens (palette, font, accent, shadcn components).
+- All authenticated pages use the same page wrapper class for consistent max-width and horizontal padding.
 - shadcn/ui component variants must be consistent across the app:
     Primary action buttons: variant="default"
     Destructive actions (delete confirm): variant="destructive"
     Secondary/cancel buttons: variant="outline"
 - Tables must be wrapped in overflow-x-auto for horizontal scrolling on small screens.
-- Form cards: max-w-xl centered on desktop, full-width with px-4 on mobile.
+- Entity form cards: max-w-xl centered on desktop, full-width with px-4 on mobile. (Public auth
+  pages are exempt — their layout is open per the rule above.)
 - Responsive breakpoints must be handled with Tailwind prefixes: sm:, md:, lg: — no inline styles.
 - The LandingPage uses the SAME palette, font, and shadcn components as the rest of the app so the
   public page and the authenticated app feel like one product. Its hero may use the accent color as

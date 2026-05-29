@@ -8,6 +8,9 @@ Company/organization (optional): ______________________________
 Database name (optional):        ______________________________
 Entities to use (optional):      ______________________________
   (e.g. "Student, Invoice, Payment"; leave blank to let the AI choose)
+Layout style (optional):         ______________________________
+  (e.g. "minimal" / "editorial" / "playful" / "corporate" / "bold" / "modern"; blank = AI picks.
+   This is a nudge for the PUBLIC pages — Landing/Login/Register/Recover — not a strict template.)
 
 Reports required (optional — copy the block for more reports; leave blank to let the AI design 2):
   Report 1
@@ -160,10 +163,21 @@ before saving — never trust the client to send computed values.
    avoid a flash of the wrong theme.
 
 Pages:
-  a. LandingPage (route /) — PUBLIC: a marketing showcase. Hero (system name, one-line value prop, a "Sign In" CTA
-     with lucide ArrowRight → /login), an about paragraph, a feature Cards grid (md:grid-cols-3, a lucide icon per
-     card), a "how it works" step flow, and a footer. Has its own minimal top bar (system name on the left; theme
-     toggle + "Sign In" on the right). NOT wrapped in ProtectedRoute, no Navbar, no protected API; renders in both themes.
+  a. LandingPage (route /) — PUBLIC: a marketing showcase for [SYSTEM NAME]. DO NOT default to the same generic
+     hero + about + 3-card grid + "how it works" + footer recipe every time — choose a layout that fits the domain
+     and the optional brief "Layout style" (split-screen, full-bleed statement, stat strip, editorial, side-panel,
+     classic hero + cards, etc.) and make it look meaningfully different from the AI's default each run. Required
+     behavior independent of the chosen layout: the system name + a one-line value prop are present; an obvious
+     primary "Sign In" CTA (lucide ArrowRight) routes to /login; the page communicates what the system does and its
+     core capabilities (managing [Entity1], recording [Entity2], tracking [Entity3], viewing Reports — expressed
+     however the layout best supports them); fully responsive; uses ONLY the CSS-variable palette and global font;
+     lucide icons only, no emoji, no lorem-ipsum. Has its own minimal top bar (system name on the left; theme toggle
+     + "Sign In" on the right). NOT wrapped in ProtectedRoute, no Navbar, no protected API; renders in both themes.
+  a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: the public pages (Landing, Login, Register, Recover) must look
+     meaningfully different from one another and reflect the system's domain. They are NOT all the same centered
+     card on a plain background. Pick layouts that suit the project (split-screen, full-bleed, editorial, stat
+     strip, single-statement, classic card, side-panel, etc.) while still using the design tokens and respecting
+     accessibility. Coherence via tokens stays; visual sameness across the four public pages does NOT.
   b. LoginPage (route /login): Username, Password (Eye/EyeOff show-hide toggle). On success → /dashboard; on failure
      → inline destructive shadcn Alert. Links: "Don't have an account? Register" → /register, "Forgot password?" →
      /recover, "Back to home" → /.
@@ -189,9 +203,12 @@ Pages:
        or a per-item totals breakdown.
      - ONE chart using recharts, which MUST be a LINE chart (LineChart): plot a meaningful metric over time (time-based
        X axis, value on Y), responsive (ResponsiveContainer), with axes, grid, and tooltip. Do not use bar/pie/other.
-       The line color is TREND-BASED: compare the last data point to the first over the range — if up or flat
-       (last >= first) use --color-trend-up (#44cf6c); if a downfall (last < first) use --color-trend-down (#A20021);
-       keep the dots consistent with the line color.
+       The line color is TREND-BASED, applied PER SEGMENT (not as a single whole-line color): for each pair of
+       consecutive points (p[i-1] → p[i]), color the segment between them with --color-trend-up (#16A34A) if
+       p[i].value >= p[i-1].value, otherwise with --color-trend-down (#DC2626). The line reads as a sequence of
+       short green/red segments reflecting each step's direction. Implement as multiple two-point <Line> series or
+       via a per-segment stroke callback — whichever cleanly produces the per-segment colors. Keep dots consistent
+       with each segment's own color.
      - All data comes from GET /api/reports/dashboard; show loading/error/empty states. Uses the Navbar and PageWrapper.
   f. [Entity1]Page (route /[entity1route]) — INSERT, SELECT, UPDATE, and record-level DELETE: form fields per Entity1;
      auto-calculate and show read-only any computed field; below the form, a shadcn Table with per-row Edit (Pencil)
@@ -248,21 +265,27 @@ network errors. One toast per result, auto-dismiss, dismissible, optional lucide
 === DESIGN & UI RULES ===
 - Define a full color palette as CSS variables (index.css or Tailwind config): --color-bg, --color-surface,
   --color-accent, --color-text, --color-muted, --color-danger, --color-success. Use ONLY these variables — never
-  hardcode hex inline. Trend tokens (exact values): --color-trend-up: #44cf6c;  --color-trend-down: #A20021;
+  hardcode hex inline. Trend tokens (exact values): --color-trend-up: #16A34A;  --color-trend-down: #DC2626;
+  (Coloring is per-segment: up token when the next point rose, down token when it fell — see DashboardPage.)
 - LIGHT & DARK MODE via a `dark` class on <html> (Tailwind v3 darkMode: 'class'). Define every token for BOTH themes
   (light values on :root, dark overrides under .dark). Background token MUST be exactly: light --color-bg: #F6F8FF;
-  dark --color-bg: #272D2D. Choose the other tokens to pair tastefully and meet WCAG AA contrast in both; the trend
+  dark --color-bg: #0A0A0A. Choose the other tokens to pair tastefully and meet WCAG AA contrast in both; the trend
   tokens stay identical in both themes.
 - The accent (--color-accent) MUST be ONE of: #094074 | #0D2149 | #003F91 — you pick whichever works best with the
-  backgrounds and contrast (a slightly lighter tint allowed in dark mode). Use the accent consistently for: active nav
+  backgrounds and contrast (a slightly lighter tint allowed in dark mode for #0A0A0A). Use the accent consistently for: active nav
   link, primary buttons, focus rings, table row highlights, and badge backgrounds.
 - A light/dark theme toggle (lucide Sun/Moon) appears in the Navbar and the LandingPage top bar.
 - No purple gradients on white. No emoji — lucide icons only, consistent sizing (size 16 or 18).
 - A distinctive Google font applied globally (e.g. Outfit, Figtree, or Space Grotesk — not generic Arial/Inter).
-- Forms: identical padding (p-6), field gap (gap-4), label style, and input height. All pages share one page-wrapper
-  class for consistent max-width and horizontal padding. Button variants are consistent: default (primary),
-  destructive (delete confirm), outline (cancel). Tables wrapped in overflow-x-auto. Form cards max-w-xl centered
-  (full-width with px-4 on mobile). Responsive via Tailwind sm:/md:/lg: only.
+- Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical padding (p-6),
+  field gap (gap-4), label style, and input height for visual coherence inside the working app. This uniformity
+  rule applies ONLY to entity forms; the public auth pages (Login, Register, Recover) are exempt and may use any
+  layout that suits the design (split-screen, side-panel, full-bleed, centered card, editorial, etc.) as long as
+  they meet ACCESSIBILITY and use the design tokens + shadcn components. All AUTHENTICATED pages share one
+  page-wrapper class (consistent max-width + horizontal padding). Button variants stay consistent everywhere:
+  default (primary), destructive (delete confirm), outline (cancel). Tables wrapped in overflow-x-auto. Entity
+  form cards max-w-xl centered (full-width with px-4 on mobile); public auth pages are exempt. Responsive via
+  Tailwind sm:/md:/lg: only.
 - @media print rules (in index.css): `.no-print { display:none !important }` on nav/filters/buttons; `.print-only`
   hidden normally and shown in print (the report header); report tables print plain black-on-white, no shadows/rounding, not clipped.
 
