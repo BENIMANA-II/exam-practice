@@ -47,10 +47,118 @@ MongoDB + Mongoose ONLY. Never substitute or fall back to MySQL/PostgreSQL/SQLit
 even if simpler or the schema looks relational. All modeling, queries, and aggregations are MongoDB/Mongoose.
 Build with React.js (frontend) + Node.js/Express.js (backend) + MongoDB.
 
-=== PROJECT STRUCTURE ===
-[RootFolderName]/
-  backend-project/   (Node + Express + Mongoose):  config/, models/, controllers/, routes/, middleware/
-  frontend-project/  (React + Vite + Tailwind + shadcn/ui + lucide-react):  src/api/, src/context/, src/components/, src/pages/, src/lib/, src/components/ui/
+=== PROJECT STRUCTURE (MANDATORY — USE THIS EXACT LAYOUT, AND ONLY THIS) ===
+Use EXACTLY this folder structure — same folders, file names, and locations; add/rename/relocate nothing
+beyond scaling the per-entity files to your real entity count (one model, controller, routes, API module,
+and page per entity, named after the REAL entity, e.g. Student.js). Root folder name is FIXED:
+BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
+
+BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
+│
+├── README.md                         ← project doc + Build Phases recap
+│
+├── backend-project/                  ← Node + Express + Mongoose
+│   ├── package.json                  ← pinned versions, "dev" script (nodemon)
+│   ├── .env.example                  ← documents all env vars (no real secrets)
+│   ├── server.js                     ← app entry: cors, JSON, session, env check,
+│   │                                   mongoose.connect, routes, app.listen
+│   │
+│   ├── config/
+│   │   ├── db.js                     ← mongoose connection wrapper
+│   │   └── seed.js                   ← idempotent admin + sample data seed
+│   │                                   (called from server.js on startup)
+│   │
+│   ├── models/                       ← one Mongoose schema per collection
+│   │   ├── User.js                   ← fullName, username, email, phone,
+│   │   │                               password (hashed), recoveryCodeHash
+│   │   ├── [Entity1].js              ← e.g. Student.js
+│   │   ├── [Entity2].js              ← e.g. Course.js
+│   │   └── [Entity3].js              ← e.g. Enrollment.js
+│   │
+│   ├── controllers/                  ← ALL business logic lives here
+│   │   ├── auth.controller.js        ← register, login, logout, me,
+│   │   │                               recoverVerify, recoverReset
+│   │   ├── [entity1].controller.js   ← create, list, update, delete handlers
+│   │   ├── [entity2].controller.js   ← create, list, update, delete handlers
+│   │   ├── [entity3].controller.js   ← create, list, update, delete handlers
+│   │   └── reports.controller.js     ← /dashboard aggregation + per-report
+│   │                                   aggregation pipelines
+│   │
+│   ├── routes/                       ← THIN: only routers + middleware mapping
+│   │   ├── auth.routes.js            ← auth paths → auth.controller fns
+│   │   ├── [entity1].routes.js       ← entity1 paths → entity1.controller fns
+│   │   ├── [entity2].routes.js       ← entity2 paths → entity2.controller fns
+│   │   ├── [entity3].routes.js       ← entity3 paths → entity3.controller fns
+│   │   └── reports.routes.js         ← /dashboard + per-report endpoints
+│   │
+│   └── middleware/
+│       ├── requireAuth.js            ← session check, returns 401 if not logged in
+│       └── requireRole.js            ← (only if the domain needs roles → 403)
+│
+└── frontend-project/                 ← React 18 + Vite + Tailwind v3 + shadcn/ui
+    ├── package.json                  ← pinned exact versions: React 18,
+    │                                   react-router-dom v6, Tailwind v3, recharts,
+    │                                   Phosphor Icons; "dev" script (vite)
+    ├── .env.example                  ← VITE_API_URL=http://localhost:5000/api
+    ├── vite.config.js                ← React plugin + `@/` path alias → src
+    ├── jsconfig.json                 ← editor `@/*` path mapping (matches vite)
+    ├── postcss.config.js             ← Tailwind v3 + autoprefixer
+    ├── tailwind.config.js            ← darkMode:'class', content globs, tokens
+    ├── index.html                    ← Vite entry, inline theme-flash guard
+    │
+    └── src/
+        ├── App.jsx                   ← BrowserRouter + <AuthProvider> +
+        │                               <IconContext.Provider weight="regular"> +
+        │                               routes + ProtectedRoute + global <Toaster />
+        ├── main.jsx                  ← React render root
+        ├── index.css                 ← @tailwind directives + CSS-variable palette
+        │                               (light/dark, accent, trend tokens) + @media print
+        │
+        ├── lib/
+        │   └── utils.js              ← cn() helper (clsx + tailwind-merge)
+        │
+        ├── context/
+        │   └── AuthContext.jsx       ← AuthProvider + useAuth() hook + useTheme()
+        │
+        ├── api/                      ← only this folder talks to axios
+        │   ├── axiosClient.js        ← baseURL, withCredentials, 401 interceptor
+        │   ├── authAPI.js            ← register, login, logout, getMe,
+        │   │                           recoverVerify, recoverReset
+        │   ├── [entity1]API.js       ← create, getAll, update, delete
+        │   ├── [entity2]API.js       ← create, getAll, update, delete
+        │   ├── [entity3]API.js       ← create, getAll, update, delete
+        │   └── reportsAPI.js         ← getDashboard() + one fetcher per report
+        │
+        ├── components/
+        │   ├── Navbar.jsx            ← Dashboard + entity links + Reports +
+        │   │                           Sun/Moon theme toggle + Logout + mobile menu
+        │   ├── ProtectedRoute.jsx    ← reads useAuth(); redirects to /login if no user
+        │   │
+        │   └── ui/                   ← shadcn components generated in full (NOT npm)
+        │       ├── button.jsx
+        │       ├── input.jsx
+        │       ├── card.jsx
+        │       ├── table.jsx
+        │       ├── dialog.jsx
+        │       ├── alert-dialog.jsx
+        │       ├── badge.jsx
+        │       ├── label.jsx
+        │       ├── tabs.jsx
+        │       ├── select.jsx
+        │       ├── alert.jsx
+        │       └── sonner.jsx
+        │
+        └── pages/                    ← one file per screen
+            ├── LandingPage.jsx       ← PUBLIC: hero, features, theme toggle, Sign In
+            ├── LoginPage.jsx         ← PUBLIC: login form, links to Register/Recover
+            ├── RegisterPage.jsx      ← PUBLIC: full signup + one-time recovery code
+            ├── RecoverPage.jsx       ← PUBLIC: verify code → reset password
+            ├── DashboardPage.jsx     ← PROTECTED: ≥4 stat cards + summary block +
+            │                           recharts LineChart with trend coloring
+            ├── [Entity1]Page.jsx     ← full CRUD: create + table + edit/delete
+            ├── [Entity2]Page.jsx     ← full CRUD: create + table + edit/delete
+            ├── [Entity3]Page.jsx     ← full CRUD: create + table + edit/delete
+            └── ReportsPage.jsx       ← Tabs per report + date filter + Print button
 
 === DATABASE: [DATABASE_NAME] ===
 YOU design entities + attributes; infer relationships and add Mongoose `ref` fields, `_id` PKs, and ObjectId
@@ -90,17 +198,18 @@ Computed fields (e.g. TotalPrice = Qty × UnitPrice) are calculated in the backe
 9. Protect all non-auth routes with a session-check middleware returning 401 if not logged in.
 
 === FRONTEND REQUIREMENTS ===
-1. React + Vite. Install/configure: axios, react-router-dom, tailwindcss, lucide-react, shadcn/ui, recharts
+1. React + Vite. Install/configure: axios, react-router-dom, tailwindcss, @phosphor-icons/react, shadcn/ui, recharts
    (dashboard chart), sonner (toasts). Render one global <Toaster/> in App.jsx.
 2. Use shadcn/ui (Button, Input, Card, Table, Dialog, AlertDialog, Badge, Label, Tabs, Select, Alert, Toaster) for ALL UI — no manually-styled raw form elements.
 2b. shadcn MUST be self-contained (no CLI assumed): either (a) generate every imported ui/ file in full
    (button, input, card, table, dialog, alert-dialog, badge, label, tabs, select, alert, sonner) plus deps
    (class-variance-authority, clsx, tailwind-merge, `cn` in src/lib/utils.js) and the `@/` alias in BOTH vite.config.js
    and jsconfig.json; or (b) fall back to plain Tailwind for any component that would be incomplete. Every import must resolve — no phantom imports.
-3. lucide-react icons ONLY. No emoji.
+3. Phosphor icons ONLY (@phosphor-icons/react), regular weight throughout via a single IconContext.Provider at the app root. No emoji.
 3b. Auth via React Context (src/context/AuthContext.jsx): AuthProvider + useAuth() holding { user, loading } and
    login/logout/register/checkAuth (GET /api/auth/me). Wrap app in <AuthProvider> in App.jsx inside BrowserRouter;
    hydrate via /me on mount. ProtectedRoute/Navbar/Login/Register/Recover use useAuth(), not direct API calls.
+3b2. Wrap the app in <IconContext.Provider value={{ weight: 'regular' }}> (from @phosphor-icons/react) at the same level as <AuthProvider> and <Toaster>, so every Phosphor icon inherits the regular weight.
 3c. Theme (light/dark) app-wide on EVERY page incl. public: useTheme()/ThemeProvider { theme, toggleTheme } toggling
    the `dark` class on <html>; on first load use saved localStorage "theme" else OS prefers-color-scheme; persist to
    localStorage on toggle (localStorage allowed for theme only); apply theme before first paint to avoid flash.
@@ -110,29 +219,29 @@ Pages:
      3-card grid + "how it works" + footer recipe every time — pick a layout that fits the domain and the optional brief
      "Layout style" (split-screen, full-bleed statement, stat strip, editorial, side-panel, classic hero+cards, etc.) and
      make it look meaningfully different from the AI's default each run. Required behavior regardless of layout: system
-     name + one-line value prop present; an obvious primary "Sign In" CTA (lucide ArrowRight) → /login; communicates what
+     name + one-line value prop present; an obvious primary "Sign In" CTA (Phosphor ArrowRight) → /login; communicates what
      the system does and its core capabilities (managing [Entity1], recording [Entity2], tracking [Entity3], viewing
      Reports — expressed however the layout best supports); fully responsive; uses ONLY the CSS-variable palette + global
-     font; lucide icons only, no emoji, no lorem-ipsum. Own minimal top bar (system name left; theme toggle + Sign In
+     font; Phosphor icons only, no emoji, no lorem-ipsum. Own minimal top bar (system name left; theme toggle + Sign In
      right). Not in ProtectedRoute, no Navbar, no protected API, both themes.
   a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: Landing/Login/Register/Recover must look meaningfully different from one another
      and reflect the system's domain. NOT all the same centered card on a plain background. Pick layouts that suit the
      project (split-screen, full-bleed, editorial, stat strip, single-statement, classic card, side-panel, etc.) while
      still using the design tokens and respecting accessibility. Token-level coherence stays; visual sameness across the
      four public pages does NOT.
-  b. LoginPage (/login): Username, Password (Eye/EyeOff toggle). Success → /dashboard. Failure → inline destructive Alert.
+  b. LoginPage (/login): Username, Password (Eye/EyeSlash toggle). Success → /dashboard. Failure → inline destructive Alert.
      Links: "Register" → /register, "Forgot password?" → /recover, "Back to home" → /.
   c. RegisterPage (/register) PUBLIC: Full Name, Email, Phone, Username, Password (+toggle), Confirm Password (+toggle), all
      required, validated client- AND server-side (see INPUT VALIDATION). On success the API returns a one-time 4-digit recovery
      code: show a "Save your recovery code" step (Dialog/Card) displaying it large/monospace, a one-line "shown once, save it"
-     note, Copy (lucide Copy) + Download (.txt named <systemname>-recovery-code.txt) buttons, and a required "I've saved it —
+     note, Copy (Phosphor Copy) + Download (.txt named <systemname>-recovery-code.txt) buttons, and a required "I've saved it —
      continue" confirm that logs in → /dashboard. Failure → destructive Alert. Links to /login and /. Not in ProtectedRoute, no Navbar.
   d. RecoverPage (/recover) PUBLIC: Step 1 Verify — Username|Email + 4-digit code (/^\d{4}$/), POST /recover/verify, generic
      error on mismatch. Step 2 Reset — New Password + Confirm (match, min 6), POST /recover/reset → returns a NEW one-time code,
      show the same "Save your recovery code" step, then → /login. "Back to Sign In" link. Not in ProtectedRoute, no Navbar.
   e. DashboardPage (/dashboard) PROTECTED, post-login/register landing. MUST present real stats, not just the chart:
      - Stat cards: responsive grid (grid-cols-2 md:grid-cols-4), ≥4 shadcn Cards of real metrics (totals per entity, today's
-       counts, ≥1 SUM/AVG e.g. total revenue), each lucide icon + accent, human-formatted numbers.
+       counts, ≥1 SUM/AVG e.g. total revenue), each Phosphor icon + accent, human-formatted numbers.
      - Summary block: a compact shadcn Table or short list (~5 rows) complementing the cards (recent records or per-item totals).
      - ONE recharts LINE chart (LineChart) of a metric over time (time X axis, value Y), ResponsiveContainer, axes/grid/tooltip.
        No bar/pie/other. Line color is TREND-BASED, applied PER SEGMENT (not whole-line): for each pair (p[i-1] → p[i]),
@@ -140,19 +249,19 @@ Pages:
        Reads as short green/red segments reflecting each step's direction. Implement as multiple two-point <Line> series or
        a per-segment stroke callback. Dots match each segment's own color.
      - All data from GET /api/reports/dashboard; show loading/error/empty states. Uses Navbar + PageWrapper.
-  f. [Entity1]Page (/[entity1route]) INSERT/SELECT/UPDATE/record-DELETE: form fields per Entity1; auto-calc + show read-only any computed field; below: shadcn Table with per-row Edit (Pencil) + Delete (Trash2). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
-  g. [Entity2]Page (/[entity2route]) INSERT/SELECT/UPDATE/record-DELETE: [Entity1] dropdown (from API) + remaining fields; date fields max=today; Table with per-row Edit (Pencil) + Delete (Trash2). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
+  f. [Entity1]Page (/[entity1route]) INSERT/SELECT/UPDATE/record-DELETE: form fields per Entity1; auto-calc + show read-only any computed field; below: shadcn Table with per-row Edit (PencilSimple) + Delete (Trash). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
+  g. [Entity2]Page (/[entity2route]) INSERT/SELECT/UPDATE/record-DELETE: [Entity1] dropdown (from API) + remaining fields; date fields max=today; Table with per-row Edit (PencilSimple) + Delete (Trash). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
   h. [Entity3]Page (/[entity3route]) INSERT/SELECT/UPDATE/record-DELETE: [Entity1] dropdown + fields; if qty-vs-stock applies,
-     qty ≤ available stock (fetch stock on dropdown change); date fields max=today; Table with per-row Edit (Pencil) + Delete (Trash2).
+     qty ≤ available stock (fetch stock on dropdown change); date fields max=today; Table with per-row Edit (PencilSimple) + Delete (Trash).
      Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
   EVERY domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog) pattern — no INSERT-only pages.
   i. ReportsPage (/reports): shadcn Tabs, ONE TAB PER REPORT (those in brief, else the 2 designed), each rendering a shadcn Table with
-     that report's columns and a filter control (default: date picker = today). Empty state w/ icon when no data. Each report has a
-     Print button (lucide Printer, window.print()) with a print-only header (system name, report title, "Printed on: [datetime]");
+     that report's columns and a filter control (default: date picker = today). Empty state w/ a Phosphor icon when no data. Each report has a
+     Print button (Phosphor Printer, window.print()) with a print-only header (system name, report title, "Printed on: [datetime]");
      filters/nav get .no-print; table prints clean (see DESIGN @media print).
   j. Navbar (shared; all pages except Landing/Login/Register/Recover): links Dashboard, [Entity1], [Entity2], [Entity3], Reports,
      Logout; a light/dark toggle (Sun/Moon); active link visually distinct (accent underline/bg); Logout via useAuth().logout()
-     (POST /api/auth/logout) then → /; collapses to hamburger (Menu) on mobile as a vertical dropdown that closes on link click.
+     (POST /api/auth/logout) then → /; collapses to hamburger (List) on mobile as a vertical dropdown that closes on link click.
 5. ProtectedRoute: wrap all routes except / /login /register /recover; read { user, loading } from useAuth() — show loading state,
    redirect to /login if no user. Public pages never trigger an auth redirect.
 
@@ -170,26 +279,32 @@ Pages:
 
 === ERROR HANDLING ===
 Wrap every API call in try/catch/finally. Server errors → destructive shadcn Alert above the form; success → green-styled
-default Alert. Loader2 (spin) in the Submit button while loading. Network error → "Unable to connect to the server. Please try
+default Alert. CircleNotch (animate-spin) in the Submit button while loading. Network error → "Unable to connect to the server. Please try
 again." Log raw errors with console.error; never expose raw error objects to the user.
 
 === TOAST NOTIFICATIONS (one per action result) ===
 Use sonner: toast.success/error/info on the RESULT of EVERY action (in addition to inline Alerts): login, register, logout,
 recovery-code generated ("Save your recovery code — it won't be shown again"), code copied/downloaded, recover verify failure,
 password reset, create/update/delete on EVERY entity (success + failure), validation blocks, network errors. One toast per result,
-auto-dismiss, dismissible, optional lucide icon, no emoji. <Toaster/> mounted once in App.jsx.
+auto-dismiss, dismissible, optional Phosphor icon, no emoji. <Toaster/> mounted once in App.jsx.
 
 === DESIGN & UI RULES ===
 - Full palette as CSS variables (index.css/Tailwind): --color-bg, --color-surface, --color-accent, --color-text, --color-muted,
-  --color-danger, --color-success. Use ONLY variables, never inline hex. Trend tokens (exact): --color-trend-up:#16A34A; --color-trend-down:#DC2626. (Coloring is PER-SEGMENT — see DashboardPage.)
+  --color-danger, --color-success, --shadow-accent. Use ONLY variables, never inline hex. Trend tokens + signature shadow (exact): --color-trend-up:#16A34A; --color-trend-down:#DC2626; --shadow-accent:0 4px 14px -4px rgba(0,63,145,0.25). (Coloring is PER-SEGMENT — see DashboardPage.)
 - LIGHT & DARK MODE via `dark` class on <html> (Tailwind v3 darkMode:'class'). Define every token for BOTH themes (light on :root,
   dark under .dark). Background token exact: light --color-bg:#F6F8FF; dark --color-bg:#0A0A0A. Other tokens chosen to pair well and
   meet WCAG AA in both; trend tokens identical in both.
-- Accent (--color-accent) MUST be ONE of: #094074 | #0D2149 | #003F91 — you pick the best for both backgrounds/contrast (a lighter
-  tint allowed in dark mode). Accent used consistently for: active nav link, primary buttons, focus rings, table row highlights, badges.
+- SIGNATURE ACCENT (FIXED — do NOT choose): --color-accent is ALWAYS exactly #003F91 (no choose-from-a-list; this single blue is the
+  project's signature, identical every build). A lighter tint allowed in dark mode for contrast vs #0A0A0A; light-mode base is exactly
+  #003F91. Accent used consistently for: active nav link, primary buttons, focus rings, table row highlights, badges.
 - Theme toggle (Sun/Moon) in Navbar and the LandingPage top bar.
-- No purple gradients on white. No emoji — lucide icons only, consistent size (16/18).
-- Distinctive Google font applied globally (e.g. Outfit/Figtree/Space Grotesk — not generic Arial/Inter).
+- No purple gradients on white. No emoji — Phosphor icons only, consistent size (16/18).
+- SIGNATURE FONT (FIXED — do NOT choose): load the Google Font "Outfit" and apply it globally as the single app-wide typeface
+  (headings, body, UI, numbers); no substitutes. Import weights 400/500/600/700 and set Outfit as the default font-family in tailwind.config.js + index.css.
+- SIGNATURE ELEMENT (FIXED — must ALWAYS appear): every elevated surface — shadcn Cards (esp. dashboard stat cards), Dialog/AlertDialog
+  modals, and the Navbar — uses the blue-tinted accent shadow var(--shadow-accent) (0 4px 14px -4px rgba(0,63,145,0.25), 0,63,145 = #003F91),
+  NEVER neutral gray; dark mode keeps the hue but raises alpha (e.g. rgba(0,63,145,0.45)). This soft blue glow is the project's one consistent
+  visual quirk, present every build; removed only inside @media print.
 - Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical padding (p-6), field gap
   (gap-4), label style, input height. This uniformity applies ONLY to entity forms; the public auth pages (Login, Register,
   Recover) are exempt and may use any layout that suits the design (split-screen, side-panel, full-bleed, centered card,
@@ -241,8 +356,8 @@ frontend .env.example: VITE_API_URL=http://localhost:5000/api
 server.js validates MONGODB_URI + SESSION_SECRET at startup (clear console.error + exit if missing). Only .env.example is delivered.
 
 === DATA-FETCHING UI ===
-Every data view has explicit loading (Loader2 spin or skeleton; disable dependent actions), error (destructive Alert + Retry;
-console.error), and empty (centered lucide icon + message) states — never a blank screen. Fetch lists on mount; refresh affected list
+Every data view has explicit loading (CircleNotch animate-spin or skeleton; disable dependent actions), error (destructive Alert + Retry;
+console.error), and empty (centered Phosphor icon + message) states — never a blank screen. Fetch lists on mount; refresh affected list
 after create/update/delete. Dependent dropdowns fetch on mount (loading/disabled until ready) and refetch on selection change. Network
 failure message matches ERROR HANDLING.
 
@@ -290,8 +405,8 @@ effects (abort/ignore stale on unmount).
 
 === STRICT LIBRARY RULES ===
 Backend only: express, cors, mongoose, bcryptjs, express-session, dotenv, nodemon (dev); express-rate-limit allowed solely for throttling.
-Frontend only: react, react-dom, react-router-dom, axios, tailwindcss, shadcn/ui, lucide-react, sonner, recharts (dashboard chart),
-and shadcn deps (class-variance-authority, clsx, tailwind-merge). MongoDB+Mongoose only for data. lucide icons only; recharts only
+Frontend only: react, react-dom, react-router-dom, axios, tailwindcss, shadcn/ui, @phosphor-icons/react, sonner, recharts (dashboard chart),
+and shadcn deps (class-variance-authority, clsx, tailwind-merge). MongoDB+Mongoose only for data. Phosphor icons only (regular weight via a single IconContext.Provider at the app root); recharts only
 (dashboard, LINE chart). No other deps (no moment/lodash/Redux/Zustand/other UI or chart libs) — solve with the allowed stack or note in
 assumptions. EXACT pinned versions in both package.json (no risky ^ majors): react-router-dom v6 (NOT v7); Tailwind v3 (NOT v4) with
 matching postcss.config.js + tailwind.config.js + v3 @tailwind directives; Vite + @vitejs/plugin-react compatible with React 18.
@@ -306,8 +421,8 @@ session store; no module-level mutable cache). API contract: noun resources, cor
 env. Frontend/backend independently runnable, communicate only over HTTP (no shared imports). Files live in the folder matching their responsibility.
 
 === PROJECT README ===
-Generate root [RootFolderName]/README.md in clean Markdown, accurate to the built app (real names/entities/routes): title + 1-paragraph
-description; tech stack (React 18 + Vite, react-router-dom v6, Node/Express, MongoDB/Mongoose, Tailwind v3 + shadcn/ui + lucide-react,
+Generate root BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/README.md in clean Markdown, accurate to the built app (real names/entities/routes): title + 1-paragraph
+description; tech stack (React 18 + Vite, react-router-dom v6, Node/Express, MongoDB/Mongoose, Tailwind v3 + shadcn/ui + Phosphor Icons (regular weight),
 recharts); features (auth + 4-digit recovery, dashboard with stats + chart, per-entity CRUD, reports with print); brief structure tree;
 prerequisites (Node LTS, MongoDB); copy-pasteable setup/run for BOTH projects (npm install, cp .env.example .env, npm run dev; API :5000,
 app :5173); env var table (no real secrets); seeded admin note (creds from SEED_ADMIN_* env, no real password printed); API reference
@@ -330,8 +445,8 @@ Backend: package.json ; .env.example ; server.js ; config/db.js ; config/seed.js
   routes/{auth,[entity1..3],reports}.routes.js (reports = dashboard + per-report) ; middleware/requireAuth.js (+ requireRole.js only if roles needed)
 Frontend: package.json (pinned: React 18, react-router-dom v6, Tailwind v3, recharts) ; vite.config.js (React plugin + `@/`→src) ;
   jsconfig.json (`@/*`) ; postcss.config.js (Tailwind v3 + autoprefixer) ; .env.example ; tailwind.config.js (v3, darkMode:'class') ;
-  src/index.css (v3 directives + tokens + font + @media print) ; src/lib/utils.js (cn) ; src/components/ui/* (every imported shadcn comp,
-  full) ; src/App.jsx (BrowserRouter + AuthProvider + routes + ProtectedRoute + global Toaster) ; src/context/AuthContext.jsx ;
+  src/index.css (v3 directives + tokens + font + @media print) ; src/main.jsx (React render root) ; src/lib/utils.js (cn) ; src/components/ui/* (every imported shadcn comp,
+  full) ; src/App.jsx (BrowserRouter + AuthProvider + routes + ProtectedRoute + global Toaster; includes <IconContext.Provider value={{ weight: 'regular' }}>) ; src/context/AuthContext.jsx ;
   src/api/{axiosClient,authAPI,[entity1..3]API,reportsAPI}.js (reportsAPI incl. getDashboard) ; src/components/{Navbar,ProtectedRoute}.jsx ;
   src/pages/{LandingPage,LoginPage,RegisterPage,RecoverPage,DashboardPage,[Entity1..3]Page,ReportsPage}.jsx
 
