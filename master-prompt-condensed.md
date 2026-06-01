@@ -38,7 +38,7 @@ cardinality (||--o{, etc.), and relationship labels. Do NOT ask the human to dra
 5 Backend Logic: controllers (all logic, validation, {data}/{error}), thin routes, requireAuth (+requireRole if needed), session auth, register + 4-digit recovery, report + dashboard aggregations, idempotent seed (admin + sample data).
 6 Frontend Foundation: package.json (pinned), vite.config, jsconfig, postcss.config, tailwind.config (v3, darkMode 'class'), index.css (tokens incl. exact bg/accent/trend colors + @media print), self-contained shadcn ui, lib/utils, axiosClient, AuthContext, useTheme.
 7 Frontend API Layer: api modules (auth, per-entity, reports incl. getDashboard).
-8 Pages & Components: Navbar, ProtectedRoute; pages Landing, Login, Register, Recover, Dashboard, entity pages, Reports; wire routing, validation, toasts, loading/error/empty states.
+8 Pages & Components: Navbar, ProtectedRoute; pages Landing, Auth (Sign In/Sign Up at /login + /register), Recover, Dashboard, entity pages, Reports; wire routing, validation, toasts, loading/error/empty states.
 9 Polish & Verify: apply design/a11y/performance/reusability rules; confirm every import resolves and every API call maps to a real route/controller; ensure RUNS-IMMEDIATELY holds.
 10 Documentation: root README.md incl. the "Build Phases" recap.
 
@@ -149,9 +149,9 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
         │       └── sonner.jsx
         │
         └── pages/                    ← one file per screen
-            ├── LandingPage.jsx       ← PUBLIC: hero, features, theme toggle, Sign In
-            ├── LoginPage.jsx         ← PUBLIC: login form, links to Register/Recover
-            ├── RegisterPage.jsx      ← PUBLIC: full signup + one-time recovery code
+            ├── LandingPage.jsx       ← PUBLIC: hero (Get Started + Explore More), #services section, theme toggle
+            ├── AuthPage.jsx          ← PUBLIC: Sign In + Sign Up on one page (segmented control),
+            │                           rendered at BOTH /login and /register
             ├── RecoverPage.jsx       ← PUBLIC: verify code → reset password
             ├── DashboardPage.jsx     ← PROTECTED: ≥4 stat cards + summary block +
             │                           recharts LineChart with trend coloring
@@ -208,7 +208,7 @@ Computed fields (e.g. TotalPrice = Qty × UnitPrice) are calculated in the backe
 3. Phosphor icons ONLY (@phosphor-icons/react), regular weight throughout via a single IconContext.Provider at the app root. No emoji.
 3b. Auth via React Context (src/context/AuthContext.jsx): AuthProvider + useAuth() holding { user, loading } and
    login/logout/register/checkAuth (GET /api/auth/me). Wrap app in <AuthProvider> in App.jsx inside BrowserRouter;
-   hydrate via /me on mount. ProtectedRoute/Navbar/Login/Register/Recover use useAuth(), not direct API calls.
+   hydrate via /me on mount. ProtectedRoute/Navbar/AuthPage/Recover use useAuth(), not direct API calls.
 3b2. Wrap the app in <IconContext.Provider value={{ weight: 'regular' }}> (from @phosphor-icons/react) at the same level as <AuthProvider> and <Toaster>, so every Phosphor icon inherits the regular weight.
 3c. Theme (light/dark) app-wide on EVERY page incl. public: useTheme()/ThemeProvider { theme, toggleTheme } toggling
    the `dark` class on <html>; on first load use saved localStorage "theme" else OS prefers-color-scheme; persist to
@@ -219,27 +219,34 @@ Pages:
      3-card grid + "how it works" + footer recipe every time — pick a layout that fits the domain and the optional brief
      "Layout style" (split-screen, full-bleed statement, stat strip, editorial, side-panel, classic hero+cards, etc.) and
      make it look meaningfully different from the AI's default each run. Required behavior regardless of layout: system
-     name + one-line value prop present; an obvious primary "Sign In" CTA (Phosphor ArrowRight) → /login; communicates what
-     the system does and its core capabilities (managing [Entity1], recording [Entity2], tracking [Entity3], viewing
+     name + one-line value prop present; two hero CTAs — primary "Get Started" (Phosphor ArrowRight) → /register (Sign Up
+     segment) and secondary "Explore More" (outline, Phosphor ArrowDown) that smooth-scrolls to the services section
+     (id="services"; href="#services" or scrollIntoView, respect prefers-reduced-motion); communicates what the system
+     does and its core capabilities in that services section (managing [Entity1], recording [Entity2], tracking [Entity3], viewing
      Reports — expressed however the layout best supports); fully responsive; uses ONLY the CSS-variable palette + global
      font; Phosphor icons only, no emoji, no lorem-ipsum. Own minimal top bar (system name left; theme toggle + Sign In
      right). Not in ProtectedRoute, no Navbar, no protected API, both themes.
-  a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: Landing/Login/Register/Recover must look meaningfully different from one another
+  a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: Landing, the combined AuthPage, and Recover must look meaningfully different from one another
      and reflect the system's domain. NOT all the same centered card on a plain background. Pick layouts that suit the
      project (split-screen, full-bleed, editorial, stat strip, single-statement, classic card, side-panel, etc.) while
      still using the design tokens and respecting accessibility. Token-level coherence stays; visual sameness across the
-     four public pages does NOT.
-  b. LoginPage (/login): Username, Password (Eye/EyeSlash toggle). Success → /dashboard. Failure → inline destructive Alert.
-     Links: "Register" → /register, "Forgot password?" → /recover, "Back to home" → /.
-  c. RegisterPage (/register) PUBLIC: Full Name, Email, Phone, Username, Password (+toggle), Confirm Password (+toggle), all
+     public surfaces does NOT.
+  b. AuthPage (routes /login AND /register) PUBLIC: ONE page combining Sign In + Sign Up via a segmented control at the top
+     (shadcn Tabs styled as a segmented pill — "Sign In" w/ Phosphor SignIn icon, "Sign Up" w/ UserPlus icon, ACTIVE segment
+     filled with --color-accent #003F91, like the reference). /login opens Sign In active, /register Sign Up active; selecting
+     a segment NAVIGATES to the matching route (active segment derived from path via useLocation, not local state alone). Shared
+     chrome: "Back to home" (ArrowLeft) → /; not in ProtectedRoute; no Navbar. Segments swap the form below, each with its own logic:
+     - Sign In (was LoginPage; POST /api/auth/login): Username, Password (Eye/EyeSlash toggle). Success → /dashboard. Failure →
+       inline destructive Alert. "Forgot password?" → /recover (the Sign In ⇄ Sign Up switch is the segmented control, not a link).
+     - Sign Up (was RegisterPage; POST /api/auth/register): Full Name, Email, Phone, Username, Password (+toggle), Confirm Password (+toggle), all
      required, validated client- AND server-side (see INPUT VALIDATION). On success the API returns a one-time 4-digit recovery
      code: show a "Save your recovery code" step (Dialog/Card) displaying it large/monospace, a one-line "shown once, save it"
      note, Copy (Phosphor Copy) + Download (.txt named <systemname>-recovery-code.txt) buttons, and a required "I've saved it —
-     continue" confirm that logs in → /dashboard. Failure → destructive Alert. Links to /login and /. Not in ProtectedRoute, no Navbar.
-  d. RecoverPage (/recover) PUBLIC: Step 1 Verify — Username|Email + 4-digit code (/^\d{4}$/), POST /recover/verify, generic
+     continue" confirm that logs in → /dashboard. Failure → destructive Alert. (Shared AuthPage chrome above applies.)
+  c. RecoverPage (/recover) PUBLIC: Step 1 Verify — Username|Email + 4-digit code (/^\d{4}$/), POST /recover/verify, generic
      error on mismatch. Step 2 Reset — New Password + Confirm (match, min 6), POST /recover/reset → returns a NEW one-time code,
      show the same "Save your recovery code" step, then → /login. "Back to Sign In" link. Not in ProtectedRoute, no Navbar.
-  e. DashboardPage (/dashboard) PROTECTED, post-login/register landing. MUST present real stats, not just the chart:
+  d. DashboardPage (/dashboard) PROTECTED, post-login/register landing. MUST present real stats, not just the chart:
      - Stat cards: responsive grid (grid-cols-2 md:grid-cols-4), ≥4 shadcn Cards of real metrics (totals per entity, today's
        counts, ≥1 SUM/AVG e.g. total revenue), each Phosphor icon + accent, human-formatted numbers.
      - Summary block: a compact shadcn Table or short list (~5 rows) complementing the cards (recent records or per-item totals).
@@ -247,19 +254,19 @@ Pages:
        No bar/pie/other. Line color is TREND-BASED, applied PER SEGMENT (not whole-line): for each pair (p[i-1] → p[i]),
        color the segment with --color-trend-up (#16A34A) if p[i].value >= p[i-1].value, else --color-trend-down (#DC2626).
        Reads as short green/red segments reflecting each step's direction. Implement as multiple two-point <Line> series or
-       a per-segment stroke callback. Dots match each segment's own color.
+       a custom SVG segment renderer (recharts has NO per-segment stroke callback on one <Line>, so prefer multiple series). Dots match each segment's own color.
      - All data from GET /api/reports/dashboard; show loading/error/empty states. Uses Navbar + PageWrapper.
-  f. [Entity1]Page (/[entity1route]) INSERT/SELECT/UPDATE/record-DELETE: form fields per Entity1; auto-calc + show read-only any computed field; below: shadcn Table with per-row Edit (PencilSimple) + Delete (Trash). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
-  g. [Entity2]Page (/[entity2route]) INSERT/SELECT/UPDATE/record-DELETE: [Entity1] dropdown (from API) + remaining fields; date fields max=today; Table with per-row Edit (PencilSimple) + Delete (Trash). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
-  h. [Entity3]Page (/[entity3route]) INSERT/SELECT/UPDATE/record-DELETE: [Entity1] dropdown + fields; if qty-vs-stock applies,
+  e. [Entity1]Page (/[entity1route]) INSERT/SELECT/UPDATE/record-DELETE: form fields per Entity1; auto-calc + show read-only any computed field; below: shadcn Table with per-row Edit (PencilSimple) + Delete (Trash). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
+  f. [Entity2]Page (/[entity2route]) INSERT/SELECT/UPDATE/record-DELETE: [Entity1] dropdown (from API) + remaining fields; date fields max=today; Table with per-row Edit (PencilSimple) + Delete (Trash). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
+  g. [Entity3]Page (/[entity3route]) INSERT/SELECT/UPDATE/record-DELETE: [Entity1] dropdown + fields; if qty-vs-stock applies,
      qty ≤ available stock (fetch stock on dropdown change); date fields max=today; Table with per-row Edit (PencilSimple) + Delete (Trash).
      Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
   EVERY domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog) pattern — no INSERT-only pages.
-  i. ReportsPage (/reports): shadcn Tabs, ONE TAB PER REPORT (those in brief, else the 2 designed), each rendering a shadcn Table with
+  h. ReportsPage (/reports): shadcn Tabs, ONE TAB PER REPORT (those in brief, else the 2 designed), each rendering a shadcn Table with
      that report's columns and a filter control (default: date picker = today). Empty state w/ a Phosphor icon when no data. Each report has a
      Print button (Phosphor Printer, window.print()) with a print-only header (system name, report title, "Printed on: [datetime]");
      filters/nav get .no-print; table prints clean (see DESIGN @media print).
-  j. Navbar (shared; all pages except Landing/Login/Register/Recover): links Dashboard, [Entity1], [Entity2], [Entity3], Reports,
+  i. Navbar (shared; all pages except Landing, the AuthPage (/login + /register), and Recover): links Dashboard, [Entity1], [Entity2], [Entity3], Reports,
      Logout; a light/dark toggle (Sun/Moon); active link visually distinct (accent underline/bg); Logout via useAuth().logout()
      (POST /api/auth/logout) then → /; collapses to hamburger (List) on mobile as a vertical dropdown that closes on link click.
 5. ProtectedRoute: wrap all routes except / /login /register /recover; read { user, loading } from useAuth() — show loading state,
@@ -306,8 +313,8 @@ auto-dismiss, dismissible, optional Phosphor icon, no emoji. <Toaster/> mounted 
   NEVER neutral gray; dark mode keeps the hue but raises alpha (e.g. rgba(0,63,145,0.45)). This soft blue glow is the project's one consistent
   visual quirk, present every build; removed only inside @media print.
 - Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical padding (p-6), field gap
-  (gap-4), label style, input height. This uniformity applies ONLY to entity forms; the public auth pages (Login, Register,
-  Recover) are exempt and may use any layout that suits the design (split-screen, side-panel, full-bleed, centered card,
+  (gap-4), label style, input height. This uniformity applies ONLY to entity forms; the public auth pages (the AuthPage
+  Sign In/Sign Up, and Recover) are exempt and may use any layout that suits the design (split-screen, side-panel, full-bleed, centered card,
   editorial, etc.) as long as they meet ACCESSIBILITY and use the design tokens + shadcn components. Authenticated pages
   share one page-wrapper (max-width + horizontal padding).
 - Button variants consistent everywhere: default (primary), destructive (delete confirm), outline (cancel). Tables wrapped
@@ -318,7 +325,7 @@ auto-dismiss, dismissible, optional Phosphor icon, no emoji. <Toaster/> mounted 
 
 === API INTEGRATION LAYER ===
 src/api/axiosClient.js: baseURL = import.meta.env.VITE_API_URL || http://localhost:5000/api; withCredentials:true; response
-  interceptor redirects to /login on 401.
+  interceptor redirects to /login on 401 — BUT exempt the /api/auth/me hydration call + public routes (/, /login, /register, /recover) so a visitor on a public page is never bounced (checkAuth swallows that 401, sets user=null).
 authAPI.js: register, login, logout, getMe, recoverVerify, recoverReset.
 [entity1..3]API.js: create/getAll/update/delete for every entity. reportsAPI.js: one fetcher per report + getDashboard().
 Each fn is async, calls axiosClient, returns the { data } payload (response.data.data); throws so the caller's catch shows the
@@ -381,7 +388,8 @@ inputs always have a defined `value` (never undefined→defined, which remounts 
 
 === SECURITY ===
 Passwords + recovery codes always bcrypt-hashed; never plaintext, logged, or returned (except the one-time code at register/reset).
-Never send password/recoveryCodeHash to the client (select:false or projection; strip from returned user). Validate + sanitize ALL
+Never send password/recoveryCodeHash to the client (select:false or projection; strip from returned user). If you use
+select:false, login + recover controllers MUST re-select the field (e.g. .select('+password')) before bcrypt.compare, or auth always fails. Validate + sanitize ALL
 input server-side; compute derived fields server-side. httpOnly session cookies (secure + sameSite in prod). CORS = CLIENT_URL only,
 credentials:true (no wildcard). Generic auth/recovery errors; throttle login + recovery (4-digit code) attempts. Never expose stack
 traces/DB internals. Guard NoSQL injection: typed/validated inputs via Mongoose methods, never queries built from raw bodies.
@@ -444,16 +452,16 @@ Backend: package.json ; .env.example ; server.js ; config/db.js ; config/seed.js
   models/User.js + one per entity ; controllers/{auth,[entity1..3],reports}.controller.js (reports incl. /dashboard handler) ;
   routes/{auth,[entity1..3],reports}.routes.js (reports = dashboard + per-report) ; middleware/requireAuth.js (+ requireRole.js only if roles needed)
 Frontend: package.json (pinned: React 18, react-router-dom v6, Tailwind v3, recharts) ; vite.config.js (React plugin + `@/`→src) ;
-  jsconfig.json (`@/*`) ; postcss.config.js (Tailwind v3 + autoprefixer) ; .env.example ; tailwind.config.js (v3, darkMode:'class') ;
+  jsconfig.json (`@/*`) ; postcss.config.js (Tailwind v3 + autoprefixer) ; .env.example ; tailwind.config.js (v3, darkMode:'class') ; index.html (Vite entry + inline theme-flash guard) ;
   src/index.css (v3 directives + tokens + font + @media print) ; src/main.jsx (React render root) ; src/lib/utils.js (cn) ; src/components/ui/* (every imported shadcn comp,
-  full) ; src/App.jsx (BrowserRouter + AuthProvider + routes + ProtectedRoute + global Toaster; includes <IconContext.Provider value={{ weight: 'regular' }}>) ; src/context/AuthContext.jsx ;
+  full) ; src/App.jsx (BrowserRouter + AuthProvider + routes + ProtectedRoute + global Toaster; includes <IconContext.Provider value={{ weight: 'regular' }}>; /login + /register both render AuthPage) ; src/context/AuthContext.jsx ;
   src/api/{axiosClient,authAPI,[entity1..3]API,reportsAPI}.js (reportsAPI incl. getDashboard) ; src/components/{Navbar,ProtectedRoute}.jsx ;
-  src/pages/{LandingPage,LoginPage,RegisterPage,RecoverPage,DashboardPage,[Entity1..3]Page,ReportsPage}.jsx
+  src/pages/{LandingPage,AuthPage,RecoverPage,DashboardPage,[Entity1..3]Page,ReportsPage}.jsx  (AuthPage renders at BOTH /login and /register)
 
 === FINAL OUTPUT RULES ===
 - Work through WORKFLOW PHASES in order. Output: (1) assumptions summary (Phases 1-2); (2) Mermaid ERD (Phase 2); (3) every file, built in
   phase order, incl. README.md whose "Build Phases" recaps what you did (Phases 3-10).
 - Entities/attributes/relationships are NOT given (beyond the brief) — design/infer them; don't ask to confirm unless the domain is unpickable.
-- LandingPage (/) public, no session; LoginPage /login, RegisterPage /register, RecoverPage /recover all public. Post-login/register → /dashboard.
+- LandingPage (/) public, no session; the combined AuthPage at BOTH /login and /register, and RecoverPage /recover — all public. Post-login/register → /dashboard.
 - No feature to delete the project, drop the DB, or bulk-wipe collections. Only deletion permitted = a single record on any entity via DELETE /api/[that entity's route]/:id — never multi-record or whole-collection.
 - Do NOT end with similar-project suggestions or "next steps." Stop once assumptions, ERD, README, and all files are delivered.
