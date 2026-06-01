@@ -288,11 +288,21 @@ Pages:
      + "Sign In" on the right). NOT wrapped in ProtectedRoute, no Navbar, no protected API; renders in both themes.
   a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: the public surfaces (Landing, the combined AuthPage, Recover) must look
      meaningfully different from one another and reflect the system's domain. They are NOT all the same centered
-     card on a plain background. Pick layouts that suit the project (split-screen, full-bleed, editorial, stat
-     strip, single-statement, classic card, side-panel, etc.) while still using the design tokens and respecting
+     card on a plain background. The AuthPage has a FIXED layout — the two-part floating card (showcase + form) in
+     (b) below; Landing and Recover must each look distinct from it and from each other. Pick layouts that suit the
+     project (split-screen, full-bleed, editorial, stat strip, single-statement, classic card, side-panel, etc.)
+     while still using the design tokens and respecting
      accessibility. Coherence via tokens stays; visual sameness across the public surfaces does NOT.
-  b. AuthPage (routes /login AND /register) — PUBLIC: ONE page combining Sign In and Sign Up via a segmented control
-     at the top (shadcn Tabs styled as a segmented pill — "Sign In" with the Phosphor SignIn icon, "Sign Up" with the
+  b. AuthPage (routes /login AND /register) — PUBLIC: LAYOUT (FIXED) — render the page as ONE floating card centered
+     on the public background, elevated with the signature accent shadow + rounded corners (rounded-2xl, overflow-hidden,
+     ≈max-w-4xl), DIVIDED INTO TWO PARTS side by side on md+ (grid md:grid-cols-2, equal height): a SHOWCASE part — a
+     branded panel filled with --color-accent #003F91 (light text, AA contrast) showing the system name, a one-line value
+     prop, and 3-4 domain capabilities as Phosphor icon + label (managing [Entity1], recording [Entity2], tracking
+     [Entity3], viewing Reports); NO form fields here — and a FORM part holding the segmented control + the active form.
+     Below md it stacks to one column (showcase becomes a compact header above the form, or hidden; form full-width, px-4);
+     both themes render (lighter accent tint allowed for the dark-mode panel).
+     The page combines Sign In and Sign Up via a segmented control at the top of the FORM part
+     (shadcn Tabs styled as a segmented pill — "Sign In" with the Phosphor SignIn icon, "Sign Up" with the
      UserPlus icon, the ACTIVE segment filled with --color-accent #003F91, exactly like the reference). /login opens
      with Sign In active, /register with Sign Up active; selecting a segment NAVIGATES to the matching route (derive the
      active segment from the path via useLocation, not local state alone) so the URL, back button, and deep links stay
@@ -409,9 +419,10 @@ network errors. One toast per result, auto-dismiss, dismissible, optional Phosph
   visual quirk, present in every build; removed only inside @media print.
 - Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical padding (p-6),
   field gap (gap-4), label style, and input height for visual coherence inside the working app. This uniformity
-  rule applies ONLY to entity forms; the public auth pages (the AuthPage Sign In/Sign Up, and Recover) are exempt and may use any
-  layout that suits the design (split-screen, side-panel, full-bleed, centered card, editorial, etc.) as long as
-  they meet ACCESSIBILITY and use the design tokens + shadcn components. All AUTHENTICATED pages share one
+  rule applies ONLY to entity forms; the public auth pages are exempt from it — the AuthPage uses its FIXED two-part
+  floating card (showcase + form; see Pages b) and Recover may use any layout that suits the design (split-screen,
+  side-panel, full-bleed, centered card, editorial, etc.) — as long as they meet ACCESSIBILITY and use the design
+  tokens + shadcn components. All AUTHENTICATED pages share one
   page-wrapper class (consistent max-width + horizontal padding). Button variants stay consistent everywhere:
   default (primary), destructive (delete confirm), outline (cancel). Tables wrapped in overflow-x-auto. Entity
   form cards max-w-xl centered (full-width with px-4 on mobile); public auth pages are exempt. Responsive via

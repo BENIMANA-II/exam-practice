@@ -227,11 +227,19 @@ Pages:
      font; Phosphor icons only, no emoji, no lorem-ipsum. Own minimal top bar (system name left; theme toggle + Sign In
      right). Not in ProtectedRoute, no Navbar, no protected API, both themes.
   a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: Landing, the combined AuthPage, and Recover must look meaningfully different from one another
-     and reflect the system's domain. NOT all the same centered card on a plain background. Pick layouts that suit the
+     and reflect the system's domain. NOT all the same centered card on a plain background. The AuthPage has a FIXED layout — the
+     two-part floating card (showcase + form) in (b); Landing and Recover must each look distinct from it and each other. Pick layouts that suit the
      project (split-screen, full-bleed, editorial, stat strip, single-statement, classic card, side-panel, etc.) while
      still using the design tokens and respecting accessibility. Token-level coherence stays; visual sameness across the
      public surfaces does NOT.
-  b. AuthPage (routes /login AND /register) PUBLIC: ONE page combining Sign In + Sign Up via a segmented control at the top
+  b. AuthPage (routes /login AND /register) PUBLIC: LAYOUT (FIXED) — ONE floating card centered on the public background,
+     elevated with the signature accent shadow + rounded corners (overflow-hidden, ~max-w-4xl), DIVIDED INTO TWO PARTS side
+     by side on md+ (grid md:grid-cols-2): a SHOWCASE part — a branded panel filled with --color-accent #003F91 (light text,
+     AA contrast) showing the system name, a one-line value prop, and 3-4 domain capabilities as Phosphor icon + label
+     (managing [Entity1], recording [Entity2], tracking [Entity3], viewing Reports), NO form fields — and a FORM part holding
+     the segmented control + active form. Below md stacks to one column (showcase → compact header above the form, or hidden;
+     form full-width px-4); both themes render (lighter accent tint allowed on the dark panel).
+     The page combines Sign In + Sign Up via a segmented control at the top of the FORM part
      (shadcn Tabs styled as a segmented pill — "Sign In" w/ Phosphor SignIn icon, "Sign Up" w/ UserPlus icon, ACTIVE segment
      filled with --color-accent #003F91, like the reference). /login opens Sign In active, /register Sign Up active; selecting
      a segment NAVIGATES to the matching route (active segment derived from path via useLocation, not local state alone). Shared
@@ -313,9 +321,10 @@ auto-dismiss, dismissible, optional Phosphor icon, no emoji. <Toaster/> mounted 
   NEVER neutral gray; dark mode keeps the hue but raises alpha (e.g. rgba(0,63,145,0.45)). This soft blue glow is the project's one consistent
   visual quirk, present every build; removed only inside @media print.
 - Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical padding (p-6), field gap
-  (gap-4), label style, input height. This uniformity applies ONLY to entity forms; the public auth pages (the AuthPage
-  Sign In/Sign Up, and Recover) are exempt and may use any layout that suits the design (split-screen, side-panel, full-bleed, centered card,
-  editorial, etc.) as long as they meet ACCESSIBILITY and use the design tokens + shadcn components. Authenticated pages
+  (gap-4), label style, input height. This uniformity applies ONLY to entity forms; the public auth pages are exempt — the
+  AuthPage uses its FIXED two-part floating card (showcase + form; see Pages b) and Recover may use any layout that suits the
+  design (split-screen, side-panel, full-bleed, centered card, editorial, etc.) as long as they meet ACCESSIBILITY and use the
+  design tokens + shadcn components. Authenticated pages
   share one page-wrapper (max-width + horizontal padding).
 - Button variants consistent everywhere: default (primary), destructive (delete confirm), outline (cancel). Tables wrapped
   in overflow-x-auto. Entity form cards max-w-xl centered (full-width px-4 on mobile); public auth pages exempt. Responsive

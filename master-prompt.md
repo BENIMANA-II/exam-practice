@@ -417,14 +417,31 @@ responsibility.
    a2. PUBLIC PAGES MUST LOOK DISTINCTIVE
       The public surfaces (LandingPage, the combined AuthPage, RecoverPage) must look meaningfully
       different from one another and reflect the system's domain. They are NOT all the same
-      centered card on a plain background. Pick layouts that suit the project — split-screen,
+      centered card on a plain background. The AuthPage has a FIXED layout — the two-part floating
+      card (showcase + form) defined in (b) below; LandingPage and RecoverPage must each look
+      distinct from it and from each other. Pick layouts that suit the project — split-screen,
       full-bleed, editorial, stat strip, single-statement, classic card, side-panel, etc. — while
       still using the design tokens (palette, font, accent), respecting accessibility (contrast,
       focus, labels), and using shadcn/ui components for interactive elements. Coherence with the
       authenticated app's tokens stays; visual sameness across the public surfaces does NOT.
 
    b. AuthPage (routes: /login AND /register)  ← PUBLIC, no auth required
-      - ONE page that combines Sign In and Sign Up via a segmented control at the top, exactly like the
+      - LAYOUT (FIXED): render the AuthPage as a single FLOATING CARD centered both vertically and
+        horizontally on the public background, elevated with the signature accent shadow and rounded
+        corners (rounded-2xl, overflow-hidden), with a sensible max width (≈ max-w-4xl). The card is
+        DIVIDED INTO TWO PARTS sitting side by side on md+ (e.g. grid md:grid-cols-2, equal height):
+          * SHOWCASE part — a branded panel filled with --color-accent (#003F91), light text on the
+            accent, presenting the system name, a one-line value proposition, and 3-4 of the domain's
+            core capabilities (each a Phosphor icon + short label: managing [Entity1], recording
+            [Entity2], tracking [Entity3], viewing Reports). This is the identity/marketing side — it
+            holds NO form fields. Phosphor icons only, no emoji, no lorem-ipsum.
+          * FORM part — holds the segmented Sign In / Sign Up control and the active form (fields,
+            validation, submit, and the recovery-code step), plus the "Back to home" link.
+        Responsive: below md the card stacks to ONE column — the showcase collapses to a compact header
+        (system name + tagline) above the form, or is hidden — and the form part takes the full width
+        (px-4 on mobile). Both themes render correctly; the accent showcase panel keeps WCAG AA contrast
+        (light text on #003F91), and a slightly lighter accent tint is allowed for the dark-mode panel.
+      - ONE page that combines Sign In and Sign Up via a segmented control at the top of the FORM part, exactly like the
         reference design: implement the control with the shadcn Tabs component styled as a segmented pill
         — two segments, "Sign In" (Phosphor SignIn icon) and "Sign Up" (Phosphor UserPlus icon), the
         ACTIVE segment filled with --color-accent (#003F91) and the inactive segment muted. Below the
@@ -690,9 +707,10 @@ responsibility.
 - Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical
   padding (p-6), gap between fields (gap-4), label style, and input height for visual coherence
   inside the working app. This uniformity rule applies ONLY to entity forms, NOT to the public
-  auth pages. The AuthPage (Sign In / Sign Up) and RecoverPage may use any layout that suits the design
-  (split-screen, side-panel, full-bleed, centered card, editorial, etc.) as long as they meet the
-  ACCESSIBILITY rules and use the design tokens (palette, font, accent, shadcn components).
+  auth pages. The AuthPage uses its FIXED two-part floating card (showcase + form; see Pages b), and
+  RecoverPage may use any layout that suits the design (split-screen, side-panel, full-bleed, centered
+  card, editorial, etc.) — as long as they meet the ACCESSIBILITY rules and use the design tokens
+  (palette, font, accent, shadcn components).
 - All authenticated pages use the same page wrapper class for consistent max-width and horizontal padding.
 - shadcn/ui component variants must be consistent across the app:
     Primary action buttons: variant="default"
