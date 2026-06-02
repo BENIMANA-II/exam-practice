@@ -8,6 +8,9 @@ Company/organization (optional): ______________________________
 Database name (optional):        ______________________________
 Entities to use (optional):      ______________________________
   (e.g. "Student, Invoice, Payment"; leave blank to let the AI choose)
+Per-entity operations (optional): ______________________________
+  (default: full CRUD on every entity. To restrict, name which entities are INSERT-ONLY — create form only, no edit/delete —
+   and which get full Create/Read/Update/Delete, e.g. "insert-only: Product, Warehouse; full CRUD: StockTransaction".)
 Layout style (optional):         ______________________________
   (e.g. "minimal" / "editorial" / "playful" / "corporate" / "bold" / "modern"; blank = AI picks.
    This is a nudge for the PUBLIC pages — Landing, the Auth (Sign In/Sign Up) page, Recover — not a strict template.)
@@ -63,7 +66,10 @@ How to infer relationships (the human supplies none — this analysis is entirel
 
 The ERD (a Mermaid erDiagram) must show: all entities, all attributes with types, _id as PK on every entity,
 reference fields as FK relationships, correct cardinality notation (||--o{, }o--||, etc.), and relationship
-labels (has / belongs to / records). Do NOT ask the human to draw, supply, or confirm it.
+labels (has / belongs to / records). Do NOT ask the human to draw, supply, or confirm it. DELIVER it as a file
+too — ERD.md at the project root, a Markdown file whose body is the Mermaid erDiagram in a ```mermaid fenced
+block (renders on GitHub/VS Code) — and show the same diagram inline before the code; keep ERD.md consistent
+with the models you build.
 
 === WORKFLOW PHASES (follow in order; don't begin a later phase's code before the earlier design phases are done) ===
   Phase 1  — Analyze & Plan: decide names, entities, attributes/constraints, the reports, and the dashboard
@@ -102,6 +108,7 @@ exactly: BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
 BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
 │
 ├── README.md                         ← project doc + Build Phases recap
+├── ERD.md                            ← the Mermaid erDiagram (entities, fields, _id PKs, FKs, cardinality)
 │
 ├── backend-project/                  ← Node + Express + Mongoose
 │   ├── package.json                  ← pinned versions, "dev" script (nodemon)
@@ -243,7 +250,10 @@ DATA OWNERSHIP & VISIBILITY.
    - POST/GET /api/[entity2route] ;  PUT /api/[entity2route]/:id ;  DELETE /api/[entity2route]/:id
    - POST/GET /api/[entity3route] ;  PUT /api/[entity3route]/:id ;  DELETE /api/[entity3route]/:id
        (every DELETE removes a single record only — row-level; never the project or database.
-        EVERY domain entity exposes this same POST/GET/PUT/DELETE set — no INSERT-only entities.)
+        By DEFAULT every domain entity exposes this same POST/GET/PUT/DELETE set. EXCEPTION — the optional
+        "Per-entity operations" brief field: an INSERT-ONLY entity gets ONLY POST (omit its PUT/DELETE; keep
+        GET only if another form needs it as a dropdown source); full-CRUD entities keep the complete set.
+        State each entity's operation set in the assumptions summary.)
    - GET /api/reports/dashboard  — one aggregation returning the stat-card metrics (counts + at least one SUM/AVG)
        and the summary-block rows.
    - GET /api/reports/<reportSlug>  — one endpoint per report; runs that report's MongoDB aggregation.
@@ -348,7 +358,9 @@ Pages:
      stock (fetch stock when the dropdown changes); date fields max = today; a Table with per-row Edit (PencilSimple) and
      Delete (Trash). Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that one
      record only (never the project/database).
-  EVERY domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog) pattern — no INSERT-only pages.
+  By DEFAULT every domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog) pattern. EXCEPTION — per
+  the "Per-entity operations" brief field: an INSERT-ONLY entity's page is a create form ONLY (no edit/delete actions, no records
+  table unless a read is needed elsewhere); only full-CRUD entities get the Edit-dialog + Delete-confirm table.
   h. ReportsPage (route /reports): shadcn Tabs, ONE TAB PER REPORT (those in the brief, or the two you designed), each
      rendering its results in a shadcn Table with that report's columns and a filter control (default: a date picker =
      today). Empty state with a Phosphor icon when no data. Each report has a Print button (Phosphor Printer, window.print())
@@ -503,7 +515,7 @@ on mount (loading/disabled until ready) and refetch on selection change. Network
 All record tables use the shadcn Table in overflow-x-auto. Provide column headers, zebra/hover styling using the accent,
 and the loading/empty states. A client-side search box above each table; sortable columns (clicking a header toggles
 asc/desc with a chevron); pagination (or lazy loading) when a table can exceed ~25 rows. Human-format values (dates,
-numbers/currency with separators, booleans/enums as accent Badges). EVERY entity table has per-row Edit/Delete; Edit
+numbers/currency with separators, booleans/enums as accent Badges). Every FULL-CRUD entity table has per-row Edit/Delete (INSERT-ONLY entities per the "Per-entity operations" field have none, and usually no table); Edit
 opens a pre-filled Dialog and Delete always goes through the AlertDialog confirmation before calling the record-level
 DELETE endpoint.
 
@@ -629,7 +641,7 @@ up or down to match the real count; keep all shared files; use REAL entity names
 student.controller.js, StudentPage.jsx), not the literal "[Entity1]".
 
 Root:
-  README.md
+  README.md ; ERD.md (the Mermaid erDiagram in a ```mermaid fenced block)
 Backend:
   package.json ; .env.example ; server.js ; config/db.js ; config/seed.js (idempotent admin + sample seed, called from
   server.js) ; models/User.js + one model per entity ; controllers/{auth,[entity1..3],reports}.controller.js (reports
@@ -645,8 +657,8 @@ Frontend:
   src/pages/{LandingPage,AuthPage,RecoverPage,DashboardPage,[Entity1..3]Page,ReportsPage}.jsx  (AuthPage renders at BOTH /login and /register)
 
 === FINAL OUTPUT RULES ===
-- Work through the WORKFLOW PHASES in order. Output: (1) the assumptions summary (Phases 1-2); (2) the Mermaid ERD (Phase 2);
-  (3) every file, built in phase order, including README.md whose "Build Phases" recaps what you did (Phases 3-10).
+- Work through the WORKFLOW PHASES in order. Output: (1) the assumptions summary (Phases 1-2); (2) the Mermaid ERD (Phase 2),
+  delivered both inline and as the root ERD.md file; (3) every file, built in phase order, including README.md whose "Build Phases" recaps what you did (Phases 3-10).
 - Entities, attributes, and relationships are NOT provided (beyond the brief) — design and infer them yourself; don't ask
   the human to confirm them unless the domain is unpickable.
 - LandingPage (/) is public with no session; the combined AuthPage renders at BOTH /login and /register, and RecoverPage /recover — all public

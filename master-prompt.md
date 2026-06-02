@@ -8,6 +8,10 @@ Company/organization (optional): ______________________________
 Database name (optional):      ______________________________
 Entities to use (optional):    ______________________________
   (e.g. "Student, Invoice, Payment"; leave blank to let the AI choose)
+Per-entity operations (optional): ______________________________
+  (default: full CRUD on every entity. To restrict, say which entities are INSERT-ONLY — a create form
+   only, no edit/delete — and which get full Create/Read/Update/Delete, e.g.
+   "insert-only: Product, Warehouse; full CRUD: StockTransaction".)
 Layout style (optional):       ______________________________
   (e.g. "minimal", "editorial", "playful", "corporate", "bold", "modern"; leave blank
    to let the AI choose an aesthetic that fits the domain. This is a nudge for the
@@ -137,6 +141,7 @@ The root folder name is FIXED and must be exactly: BENIMANA_Irakiza_Jean_Flauber
 BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
 │
 ├── README.md                         ← project doc + Build Phases recap
+├── ERD.md                            ← the Mermaid erDiagram (entities, fields, _id PKs, FKs, cardinality)
 │
 ├── backend-project/                  ← Node + Express + Mongoose
 │   ├── package.json                  ← pinned versions, "dev" script (nodemon)
@@ -282,6 +287,10 @@ attributes, and relationships are all designed/inferred by YOU. You determine ev
 every cardinality yourself by analyzing the domain, the attributes, and the system's purpose.
 Producing the assumptions summary, the relationship analysis, and the diagram is entirely your
 responsibility.
+You MUST also DELIVER this ERD as a file: ERD.md at the project root — a Markdown file whose body is
+the Mermaid erDiagram inside a ```mermaid fenced code block (so it renders on GitHub/VS Code), optionally
+preceded by the one-line-per-relationship reasoning. Show the same diagram inline in your output before
+the code, and keep ERD.md consistent with the models you actually build.
 
 === BACKEND REQUIREMENTS ===
 1. Use express.js, cors, mongoose, bcryptjs, express-session, dotenv, nodemon.
@@ -336,9 +345,12 @@ responsibility.
    - PUT    /api/[entity3route]/:id      — update a [Entity3] record
    - DELETE /api/[entity3route]/:id      — delete a single [Entity3] RECORD
                                             (row-level only; NOT the project/database)
-   EVERY domain entity must expose this same POST/GET/PUT/DELETE set — no
-   "INSERT-only" entities. If you choose more or fewer entities, repeat the
-   four-route pattern for each one.
+   By DEFAULT every domain entity exposes this same POST/GET/PUT/DELETE set; if you choose more or
+   fewer entities, repeat the four-route pattern for each. EXCEPTION — the optional "Per-entity
+   operations" brief field: if it marks an entity INSERT-ONLY, generate ONLY POST (create) for it and
+   OMIT its PUT and DELETE routes/controllers; keep GET only if another entity's form needs it as a
+   dropdown/relationship source (otherwise omit GET too). Entities listed as full-CRUD keep the
+   complete set. State each entity's operation set in the assumptions summary.
    - GET    /api/reports/dashboard      — single aggregation powering DashboardPage: returns the
                                             stat-card metrics (counts + at least one SUM/AVG) and the
                                             summary-block rows (e.g. recent records or per-item totals),
@@ -552,8 +564,10 @@ responsibility.
       - Delete shows shadcn AlertDialog confirmation, then DELETEs that single record only
         (this removes one row from the collection — it must never delete the project or database)
 
-   EVERY domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog)
-   pattern — there are no INSERT-only pages.
+   By DEFAULT every domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog)
+   pattern. EXCEPTION — per the "Per-entity operations" brief field: an INSERT-ONLY entity's page is a
+   create form ONLY (no edit/delete actions, and no records table unless a read is needed elsewhere);
+   only the full-CRUD entities get the Edit-dialog + Delete-confirm table.
 
    h. ReportsPage (route: /reports)
       - Use shadcn Tabs component with ONE TAB PER REPORT — one tab for each report described in
@@ -861,9 +875,10 @@ below are EXAMPLES of typical reports; adapt them to whatever each described rep
   of rows at once.
 - Format values for humans: dates in a readable locale format, numbers/currency with separators,
   booleans/enums as shadcn Badges with the accent palette.
-- EVERY entity table shows per-row Edit (PencilSimple) and Delete (Trash) actions; Edit opens a pre-filled
-  shadcn Dialog modal, and Delete always goes through the AlertDialog confirmation before calling the
-  record-level DELETE endpoint.
+- Every FULL-CRUD entity table shows per-row Edit (PencilSimple) and Delete (Trash) actions; Edit opens a
+  pre-filled shadcn Dialog modal, and Delete always goes through the AlertDialog confirmation before calling
+  the record-level DELETE endpoint. (INSERT-ONLY entities per the "Per-entity operations" field have no
+  edit/delete actions — and usually no management table at all.)
 
 === REUSABILITY RULES ===
 - Don't repeat UI: build small reusable pieces (e.g. PageWrapper for max-width/padding, FormField that
@@ -1073,6 +1088,7 @@ not the literal "[Entity1]".
 
 Root:
   0. BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/README.md   (per the PROJECT README section)
+  0b. BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/ERD.md   (the Mermaid erDiagram in a ```mermaid fenced block)
 
 Backend:
   1. backend-project/package.json   (exact pinned versions; "dev" script via nodemon)
@@ -1134,7 +1150,8 @@ Frontend:
 === FINAL OUTPUT RULES ===
 - Work through the WORKFLOW PHASES in order. Output order: (1) a brief assumptions summary — the
   system name, entities/attributes, inferred relationships (one line each with reasoning), and the
-  reports you will build (Phases 1-2); (2) the Mermaid ERD you drew from that analysis (Phase 2);
+  reports you will build (Phases 1-2); (2) the Mermaid ERD you drew from that analysis (Phase 2),
+  delivered both inline and as the root ERD.md file;
   (3) every file the app needs, built in phase order, including the root README.md whose "Build
   Phases" section recaps the phases you followed (Phases 3-10).
 - You do NOT have to produce everything in a single response. It is fine to deliver the code across

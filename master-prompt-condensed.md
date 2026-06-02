@@ -4,6 +4,7 @@ System name (optional): ______________
 Company/organization (optional): ______________
 Database name (optional): ______________
 Entities to use (optional): ______________  (e.g. "Student, Invoice, Payment"; blank = AI chooses)
+Per-entity operations (optional): ______________  (default: full CRUD on every entity. To restrict, name INSERT-ONLY entities (create form only, no edit/delete) vs full-CRUD ones, e.g. "insert-only: Product, Warehouse; full CRUD: StockTransaction".)
 Layout style (optional): ______________  (e.g. "minimal"/"editorial"/"playful"/"corporate"/"bold"/"modern"; blank = AI picks. Nudge for the PUBLIC pages, not a strict template.)
 Data visibility (optional): ______________  (blank = per-user: each user sees only records they create + seeded data belongs to admin only. "shared" = all users see one dataset; "admin sees all" = per-user but admin views/manages everyone's records.)
 Reports (optional — copy block per report; blank = AI designs 2):
@@ -29,7 +30,7 @@ Id/Ref, or another entity's name) as a foreign-key ref; a ref on B → A means A
 mutual refs or a join entity = many-to-many; a value computed from other fields is a derived field, not a
 relationship. State one line of reasoning per relationship before the ERD. The ERD (Mermaid erDiagram) must
 show all entities, attributes with types, _id as PK on each, ref fields as FK relationships, correct
-cardinality (||--o{, etc.), and relationship labels. Do NOT ask the human to draw or confirm it.
+cardinality (||--o{, etc.), and relationship labels. Do NOT ask the human to draw or confirm it. DELIVER it as a file too — ERD.md at the project root, a Markdown file whose body is the Mermaid erDiagram in a ```mermaid fenced block (renders on GitHub/VS Code) — and show the same diagram inline before the code; keep ERD.md consistent with the models you build.
 
 === WORKFLOW PHASES (follow in order; don't start a later phase's code before earlier design phases are done) ===
 1 Analyze & Plan: decide names/entities/attributes, reports, dashboard metrics; output assumptions summary.
@@ -57,6 +58,7 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
 BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
 │
 ├── README.md                         ← project doc + Build Phases recap
+├── ERD.md                            ← the Mermaid erDiagram (entities, fields, _id PKs, FKs, cardinality)
 │
 ├── backend-project/                  ← Node + Express + Mongoose
 │   ├── package.json                  ← pinned versions, "dev" script (nodemon)
@@ -189,7 +191,7 @@ Unless data visibility is "shared", every domain entity ALSO carries an `owner` 
    - POST/GET /api/[entity1route] ; PUT /api/[entity1route]/:id ; DELETE /api/[entity1route]/:id
    - POST/GET /api/[entity2route] ; PUT /api/[entity2route]/:id ; DELETE /api/[entity2route]/:id
    - POST/GET /api/[entity3route] ; PUT /api/[entity3route]/:id ; DELETE /api/[entity3route]/:id
-     (every DELETE = single record only — never the project/DB. EVERY domain entity exposes this same POST/GET/PUT/DELETE set; no INSERT-only entities.)
+     (every DELETE = single record only — never the project/DB. By DEFAULT every domain entity exposes this same POST/GET/PUT/DELETE set. EXCEPTION — the optional "Per-entity operations" brief field: an INSERT-ONLY entity gets ONLY POST (omit PUT/DELETE; keep GET only if another form needs it as a dropdown source); full-CRUD entities keep the complete set. State each entity's ops in the assumptions summary.)
    - GET /api/reports/dashboard  — one aggregation: stat-card metrics (counts + ≥1 SUM/AVG) and summary-block rows.
    - GET /api/reports/<reportSlug>  — one per report; runs that report's MongoDB aggregation.
 5. Mongoose model methods only — no raw/SQL queries.
@@ -263,7 +265,7 @@ Pages:
   g. [Entity3]Page (/[entity3route]) INSERT/SELECT/UPDATE/record-DELETE: [Entity1] dropdown + fields; if qty-vs-stock applies,
      qty ≤ available stock (fetch stock on dropdown change); date fields max=today; Table with per-row Edit (PencilSimple) + Delete (Trash).
      Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
-  EVERY domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog) pattern — no INSERT-only pages.
+  By DEFAULT every domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog) pattern. EXCEPTION — per the "Per-entity operations" brief field: an INSERT-ONLY entity's page is a create form ONLY (no edit/delete, no records table unless a read is needed elsewhere); only full-CRUD entities get the Edit-dialog + Delete-confirm table.
   h. ReportsPage (/reports): shadcn Tabs, ONE TAB PER REPORT (those in brief, else the 2 designed), each rendering a shadcn Table with
      that report's columns and a filter control (default: date picker = today). Empty state w/ a Phosphor icon when no data. Each report has a
      Print button (Phosphor Printer, window.print()) with a print-only header (system name, report title, "Printed on: [datetime]") and a
@@ -377,7 +379,7 @@ failure message matches ERROR HANDLING.
 === TABLE FEATURES ===
 shadcn Table in overflow-x-auto. Headers; zebra/hover using accent; loading/empty states. Client-side search box above each table;
 sortable columns (header toggles asc/desc with chevron); pagination (or lazy load) past ~25 rows. Human-format values (dates, numbers/
-currency with separators, booleans/enums as accent Badges). EVERY entity table has per-row Edit/Delete; Edit opens a pre-filled Dialog and Delete always goes through the AlertDialog confirmation before calling the record-level DELETE endpoint.
+currency with separators, booleans/enums as accent Badges). Every FULL-CRUD entity table has per-row Edit/Delete (INSERT-ONLY entities per the "Per-entity operations" field have none, and usually no table); Edit opens a pre-filled Dialog and Delete always goes through the AlertDialog confirmation before calling the record-level DELETE endpoint.
 
 === REUSABILITY ===
 Build reusable pieces (PageWrapper, FormField = Label+Input+error, DataTable, ConfirmDialog wrapping AlertDialog, StateBlock for
@@ -460,7 +462,7 @@ messages for length (continue on your own at clean file boundaries); that never 
 Default is 3 domain entities — scale per-entity files (model/controller/routes/api/page each) up/down to the real count; keep shared files;
 use REAL entity names in filenames (Student.js, student.controller.js, StudentPage.jsx), not "[Entity1]".
 
-Root: README.md
+Root: README.md ; ERD.md (the Mermaid erDiagram in a ```mermaid fenced block)
 Backend: package.json ; .env.example ; server.js ; config/db.js ; config/seed.js (idempotent admin+sample seed, called from server.js) ;
   models/User.js + one per entity ; controllers/{auth,[entity1..3],reports}.controller.js (reports incl. /dashboard handler) ;
   routes/{auth,[entity1..3],reports}.routes.js (reports = dashboard + per-report) ; middleware/requireAuth.js (+ requireRole.js only if roles needed)
@@ -472,7 +474,7 @@ Frontend: package.json (pinned: React 18, react-router-dom v6, Tailwind v3) ; vi
   src/pages/{LandingPage,AuthPage,RecoverPage,DashboardPage,[Entity1..3]Page,ReportsPage}.jsx  (AuthPage renders at BOTH /login and /register)
 
 === FINAL OUTPUT RULES ===
-- Work through WORKFLOW PHASES in order. Output: (1) assumptions summary (Phases 1-2); (2) Mermaid ERD (Phase 2); (3) every file, built in
+- Work through WORKFLOW PHASES in order. Output: (1) assumptions summary (Phases 1-2); (2) Mermaid ERD (Phase 2), delivered both inline and as the root ERD.md file; (3) every file, built in
   phase order, incl. README.md whose "Build Phases" recaps what you did (Phases 3-10).
 - Entities/attributes/relationships are NOT given (beyond the brief) — design/infer them; don't ask to confirm unless the domain is unpickable.
 - LandingPage (/) public, no session; the combined AuthPage at BOTH /login and /register, and RecoverPage /recover — all public. Post-login/register → /dashboard.
