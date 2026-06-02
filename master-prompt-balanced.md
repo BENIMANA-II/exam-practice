@@ -12,6 +12,11 @@ Layout style (optional):         ______________________________
   (e.g. "minimal" / "editorial" / "playful" / "corporate" / "bold" / "modern"; blank = AI picks.
    This is a nudge for the PUBLIC pages — Landing, the Auth (Sign In/Sign Up) page, Recover — not a strict template.)
 
+Data visibility (optional):      ______________________________
+  (blank = per-user: each user sees only the records they create, and the seeded sample data belongs to the admin only.
+   Write "shared" to let all users see one shared dataset, or "admin sees all" for per-user data where the admin can
+   view/manage every user's records.)
+
 Reports required (optional — copy the block for more reports; leave blank to let the AI design 2):
   Report 1
     Name:             ______________________________
@@ -72,8 +77,8 @@ labels (has / belongs to / records). Do NOT ask the human to draw, supply, or co
              (+ requireRole if needed), session auth, registration + 4-digit recovery, report + dashboard
              aggregations, and the idempotent seed (admin + sample data).
   Phase 6  — Frontend Foundation: package.json (pinned versions), vite.config, jsconfig, postcss.config,
-             tailwind.config (v3, darkMode 'class'), index.css (tokens incl. exact bg/accent/trend colors + @media
-             print), the self-contained shadcn ui components, lib/utils, axiosClient, AuthContext, useTheme.
+             tailwind.config (v3), index.css (tokens incl. exact bg/accent colors + @media
+             print), the self-contained shadcn ui components, lib/utils, axiosClient, AuthContext.
   Phase 7  — Frontend API Layer: api modules (auth, per-entity, reports incl. getDashboard).
   Phase 8  — Pages & Components: Navbar, ProtectedRoute, and the pages (Landing, Auth (Sign In/Sign Up at /login + /register), Recover,
              Dashboard, entity pages, Reports); wire routing, validation, toasts, and loading/error/empty states.
@@ -138,14 +143,14 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
 │
 └── frontend-project/                 ← React 18 + Vite + Tailwind v3 + shadcn/ui
     ├── package.json                  ← pinned exact versions: React 18,
-    │                                   react-router-dom v6, Tailwind v3, recharts,
+    │                                   react-router-dom v6, Tailwind v3,
     │                                   Phosphor Icons; "dev" script (vite)
     ├── .env.example                  ← VITE_API_URL=http://localhost:5000/api
     ├── vite.config.js                ← React plugin + `@/` path alias → src
     ├── jsconfig.json                 ← editor `@/*` path mapping (matches vite)
     ├── postcss.config.js             ← Tailwind v3 + autoprefixer
-    ├── tailwind.config.js            ← darkMode:'class', content globs, tokens
-    ├── index.html                    ← Vite entry, inline theme-flash guard
+    ├── tailwind.config.js            ← content globs, tokens
+    ├── index.html                    ← Vite entry
     │
     └── src/
         ├── App.jsx                   ← BrowserRouter + <AuthProvider> +
@@ -153,13 +158,13 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
         │                               routes + ProtectedRoute + global <Toaster />
         ├── main.jsx                  ← React render root
         ├── index.css                 ← @tailwind directives + CSS-variable palette
-        │                               (light/dark, accent, trend tokens) + @media print
+        │                               (accent tokens) + @media print
         │
         ├── lib/
         │   └── utils.js              ← cn() helper (clsx + tailwind-merge)
         │
         ├── context/
-        │   └── AuthContext.jsx       ← AuthProvider + useAuth() hook + useTheme()
+        │   └── AuthContext.jsx       ← AuthProvider + useAuth() hook
         │
         ├── api/                      ← only this folder talks to axios
         │   ├── axiosClient.js        ← baseURL, withCredentials, 401 interceptor
@@ -172,7 +177,7 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
         │
         ├── components/
         │   ├── Navbar.jsx            ← Dashboard + entity links + Reports +
-        │   │                           Sun/Moon theme toggle + Logout + mobile menu
+        │   │                           user/role label + Logout + mobile menu
         │   ├── ProtectedRoute.jsx    ← reads useAuth(); redirects to /login if no user
         │   │
         │   └── ui/                   ← shadcn components generated in full (NOT npm)
@@ -190,12 +195,11 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
         │       └── sonner.jsx
         │
         └── pages/                    ← one file per screen
-            ├── LandingPage.jsx       ← PUBLIC: hero (Get Started + Explore More), #services section, theme toggle
+            ├── LandingPage.jsx       ← PUBLIC: hero (Get Started + Explore More), #services section
             ├── AuthPage.jsx          ← PUBLIC: Sign In + Sign Up on one page (segmented control),
             │                           rendered at BOTH /login and /register
             ├── RecoverPage.jsx       ← PUBLIC: verify code → reset password
-            ├── DashboardPage.jsx     ← PROTECTED: ≥4 stat cards + summary block +
-            │                           recharts LineChart with trend coloring
+            ├── DashboardPage.jsx     ← PROTECTED: ≥4 stat cards + summary block
             ├── [Entity1]Page.jsx     ← full CRUD: create + table + edit/delete
             ├── [Entity2]Page.jsx     ← full CRUD: create + table + edit/delete
             ├── [Entity3]Page.jsx     ← full CRUD: create + table + edit/delete
@@ -213,7 +217,9 @@ well-named domain entities the project needs (typically 2-4), named after the ac
   [Entity3]({ _id, [domain fields], [computedField if relevant], [dateField if relevant], [attributes referencing other entities if implied] })
 Attributes that name/identify another entity are FK-ref clues — YOU decide they are references, add the `ref`,
 and set the cardinality. Computed fields (e.g. TotalPrice = Quantity × UnitPrice) are calculated in the backend
-before saving — never trust the client to send computed values.
+before saving — never trust the client to send computed values. Unless data visibility is "shared", every domain
+entity ALSO carries an `owner` (ObjectId ref → User, required, indexed) set server-side to the creating user — see
+DATA OWNERSHIP & VISIBILITY.
 
 === BACKEND REQUIREMENTS ===
 1. Use express, cors, mongoose, bcryptjs, express-session, dotenv, nodemon.
@@ -238,8 +244,8 @@ before saving — never trust the client to send computed values.
    - POST/GET /api/[entity3route] ;  PUT /api/[entity3route]/:id ;  DELETE /api/[entity3route]/:id
        (every DELETE removes a single record only — row-level; never the project or database.
         EVERY domain entity exposes this same POST/GET/PUT/DELETE set — no INSERT-only entities.)
-   - GET /api/reports/dashboard  — one aggregation returning the stat-card metrics (counts + at least one SUM/AVG),
-       the summary-block rows, and the chart TIME SERIES (an ordered array of { date/label, value } points).
+   - GET /api/reports/dashboard  — one aggregation returning the stat-card metrics (counts + at least one SUM/AVG)
+       and the summary-block rows.
    - GET /api/reports/<reportSlug>  — one endpoint per report; runs that report's MongoDB aggregation.
 5. Use Mongoose model methods only — no raw string queries, no SQL.
 6. Hash passwords and recovery codes with bcryptjs; compare with bcrypt.compare().
@@ -247,10 +253,13 @@ before saving — never trust the client to send computed values.
 8. Response shape with NO exceptions: success returns { data: ... } JSON; every try/catch failure returns
    { error: message } JSON.
 9. Protect all non-auth routes with a session-check middleware that returns 401 if not logged in.
+10. Data scoping (default): scope every domain entity's create/list/update/delete AND the dashboard/report aggregations
+   to the logged-in user as `owner` — create sets owner server-side, reads filter by owner, update/delete only touch the
+   user's own records (404 otherwise); the "shared" and "admin sees all" modes adjust this. See DATA OWNERSHIP & VISIBILITY.
 
 === FRONTEND REQUIREMENTS ===
-1. React + Vite. Install/configure: axios, react-router-dom, tailwindcss, @phosphor-icons/react, shadcn/ui, recharts
-   (dashboard chart), and sonner (toasts). Render a single global <Toaster /> once in App.jsx.
+1. React + Vite. Install/configure: axios, react-router-dom, tailwindcss, @phosphor-icons/react, shadcn/ui,
+   and sonner (toasts). Render a single global <Toaster /> once in App.jsx.
 2. Use shadcn/ui components (Button, Input, Card, Table, Dialog, AlertDialog, Badge, Label, Tabs, Select, Alert,
    Toaster) for ALL UI — no manually-styled raw HTML form elements.
 2b. shadcn setup MUST be self-contained (do NOT assume a CLI init ran). Either (a) generate every shadcn component
@@ -265,12 +274,7 @@ before saving — never trust the client to send computed values.
    { user, loading } and exposing login/logout/register and a checkAuth() that calls GET /api/auth/me. Wrap the app
    in <AuthProvider> in App.jsx inside BrowserRouter; hydrate the session via /me on mount. ProtectedRoute, Navbar,
    AuthPage and Recover read auth from useAuth() instead of calling the auth API directly.
-3c. Theme (light/dark) is app-wide and available on EVERY page including the public ones: a useTheme()/ThemeProvider
-   holding { theme, toggleTheme } that toggles the `dark` class on <html>. On first load, use the saved localStorage
-   "theme" if present, else the OS prefers-color-scheme; persist the choice to localStorage on every toggle so it
-   survives reloads (localStorage is permitted for the theme preference only); apply the theme before first paint to
-   avoid a flash of the wrong theme.
-3d. Wrap the app in <IconContext.Provider value={{ weight: 'regular' }}> (from @phosphor-icons/react) at the same level
+3c. Wrap the app in <IconContext.Provider value={{ weight: 'regular' }}> (from @phosphor-icons/react) at the same level
    as <AuthProvider> and <Toaster>, so every Phosphor icon inherits the regular weight.
 
 Pages:
@@ -284,8 +288,8 @@ Pages:
      scrollIntoView, respecting prefers-reduced-motion); the page communicates what the system does and its core
      capabilities in that services section (managing [Entity1], recording [Entity2], tracking [Entity3], viewing Reports — expressed
      however the layout best supports them); fully responsive; uses ONLY the CSS-variable palette and global font;
-     Phosphor icons only, no emoji, no lorem-ipsum. Has its own minimal top bar (system name on the left; theme toggle
-     + "Sign In" on the right). NOT wrapped in ProtectedRoute, no Navbar, no protected API; renders in both themes.
+     Phosphor icons only, no emoji, no lorem-ipsum. Has its own minimal top bar (system name on the left; "Sign In"
+     on the right). NOT wrapped in ProtectedRoute, no Navbar, no protected API.
   a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: the public surfaces (Landing, the combined AuthPage, Recover) must look
      meaningfully different from one another and reflect the system's domain. They are NOT all the same centered
      card on a plain background. The AuthPage has a FIXED layout — the two-part floating card (showcase + form) in
@@ -299,8 +303,7 @@ Pages:
      branded panel filled with --color-accent #003F91 (light text, AA contrast) showing the system name, a one-line value
      prop, and 3-4 domain capabilities as Phosphor icon + label (managing [Entity1], recording [Entity2], tracking
      [Entity3], viewing Reports); NO form fields here — and a FORM part holding the segmented control + the active form.
-     Below md it stacks to one column (showcase becomes a compact header above the form, or hidden; form full-width, px-4);
-     both themes render (lighter accent tint allowed for the dark-mode panel).
+     Below md it stacks to one column (showcase becomes a compact header above the form, or hidden; form full-width, px-4).
      The page combines Sign In and Sign Up via a segmented control at the top of the FORM part
      (shadcn Tabs styled as a segmented pill — "Sign In" with the Phosphor SignIn icon, "Sign Up" with the
      UserPlus icon, the ACTIVE segment filled with --color-accent #003F91, exactly like the reference). /login opens
@@ -325,21 +328,12 @@ Pages:
      (must match, min 6), POST /api/auth/recover/reset → returns a NEW one-time code; show the same "Save your recovery
      code" step, then → /login. "Back to Sign In" link. Not wrapped in ProtectedRoute; no Navbar.
   d. DashboardPage (route /dashboard) — PROTECTED, the default landing after login/registration. MUST present real
-     statistics, not just the chart — lead with the stats, chart below:
+     statistics — lead with the stats, summary below:
      - Stat cards: a responsive grid (grid-cols-2 md:grid-cols-4) of AT LEAST FOUR shadcn Cards showing real metrics
        of your entities (totals per entity, today's counts, and at least one aggregated SUM/AVG such as total revenue),
        each with a Phosphor icon and the accent color; numbers human-formatted (separators, currency where relevant).
      - A summary block: a compact shadcn Table or short list (~5 rows) complementing the cards — e.g. recent records
        or a per-item totals breakdown.
-     - ONE chart using recharts, which MUST be a LINE chart (LineChart): plot a meaningful metric over time (time-based
-       X axis, value on Y), responsive (ResponsiveContainer), with axes, grid, and tooltip. Do not use bar/pie/other.
-       The line color is TREND-BASED, applied PER SEGMENT (not as a single whole-line color): for each pair of
-       consecutive points (p[i-1] → p[i]), color the segment between them with --color-trend-up (#16A34A) if
-       p[i].value >= p[i-1].value, otherwise with --color-trend-down (#DC2626). The line reads as a sequence of
-       short green/red segments reflecting each step's direction. Implement as multiple two-point <Line> series or
-       via a custom SVG segment renderer (recharts has NO per-segment stroke callback on a single <Line>, so prefer
-       the multiple-series approach) — whichever cleanly produces the per-segment colors. Keep dots consistent
-       with each segment's own color.
      - All data comes from GET /api/reports/dashboard; show loading/error/empty states. Uses the Navbar and PageWrapper.
   e. [Entity1]Page (route /[entity1route]) — INSERT, SELECT, UPDATE, and record-level DELETE: form fields per Entity1;
      auto-calculate and show read-only any computed field; below the form, a shadcn Table with per-row Edit (PencilSimple)
@@ -358,10 +352,15 @@ Pages:
   h. ReportsPage (route /reports): shadcn Tabs, ONE TAB PER REPORT (those in the brief, or the two you designed), each
      rendering its results in a shadcn Table with that report's columns and a filter control (default: a date picker =
      today). Empty state with a Phosphor icon when no data. Each report has a Print button (Phosphor Printer, window.print())
-     with a print-only header (system name, report title, "Printed on: [datetime]"); filters/nav get the .no-print class;
-     the table prints clean (see DESIGN @media print).
+     with a print-only header (system name, report title, "Printed on: [datetime]") and a print-only footer "Generated by
+     [current user label]" (same label as the Navbar (i): "System Admin" for the admin, the user's role if role-based, else
+     the full name); filters/nav get the .no-print class; the table prints clean (see DESIGN @media print).
   i. Navbar (shared; rendered on all pages except Landing, the AuthPage (/login + /register), and Recover): links Dashboard, [Entity1], [Entity2],
-     [Entity3], Reports, Logout; a light/dark theme toggle (Sun/Moon); the active link is visually distinct (accent
+     [Entity3], Reports, Logout. Shows the logged-in user's identity (useAuth().user): their full name, or "System Admin" if
+     they are the seeded admin account (identified via a role/isAdmin field or SEED_ADMIN_USERNAME); if the app is role-based
+     (a `role` field — see AUTHORIZATION) also show the role beside the name (small accent Badge). Define the "current user
+     label" once — "System Admin" for the admin, else the role when role-based, else the full name — reused by the Reports
+     print footer (h). The active link is visually distinct (accent
      underline/background); Logout calls useAuth().logout() (POST /api/auth/logout) then → /; collapses to a hamburger
      (List) on mobile as a vertical dropdown that closes on link click.
 5. ProtectedRoute: wrap all routes except / /login /register /recover; read { user, loading } from useAuth() — show a
@@ -396,27 +395,26 @@ network errors. One toast per result, auto-dismiss, dismissible, optional Phosph
 === DESIGN & UI RULES ===
 - Define a full color palette as CSS variables (index.css or Tailwind config): --color-bg, --color-surface,
   --color-accent, --color-text, --color-muted, --color-danger, --color-success, --shadow-accent. Use ONLY these
-  variables — never hardcode hex inline. Trend tokens + signature shadow (exact values): --color-trend-up: #16A34A;
-  --color-trend-down: #DC2626;  --shadow-accent: 0 4px 14px -4px rgba(0, 63, 145, 0.25);
-  (Coloring is per-segment: up token when the next point rose, down token when it fell — see DashboardPage.)
-- LIGHT & DARK MODE via a `dark` class on <html> (Tailwind v3 darkMode: 'class'). Define every token for BOTH themes
-  (light values on :root, dark overrides under .dark). Background token MUST be exactly: light --color-bg: #F6F8FF;
-  dark --color-bg: #0A0A0A. Choose the other tokens to pair tastefully and meet WCAG AA contrast in both; the trend
-  tokens stay identical in both themes.
+  variables — never hardcode hex inline. Signature shadow (exact value):
+  --shadow-accent: 0 4px 14px -4px rgba(0, 63, 145, 0.25);
+- COLOR PALETTE: define every token on :root (the app is light-mode only — no dark theme, no theme toggle). The
+  background token MUST be exactly --color-bg: #F6F8FF. Choose the other tokens to pair tastefully and meet WCAG
+  AA contrast.
 - SIGNATURE ACCENT (FIXED — do NOT choose): --color-accent is ALWAYS exactly #003F91 (no choose-from-a-list rule;
-  this single blue is the project's signature, identical in every build). A slightly lighter tint is allowed in dark
-  mode for contrast against #0A0A0A, but the light-mode base is exactly #003F91. Use the accent consistently for:
+  this single blue is the project's signature, identical in every build). Use the accent consistently for:
   active nav link, primary buttons, focus rings, table row highlights, and badge backgrounds.
-- A light/dark theme toggle (Phosphor Sun/Moon) appears in the Navbar and the LandingPage top bar.
 - No purple gradients on white. No emoji — Phosphor icons only, consistent sizing (size 16 or 18).
 - SIGNATURE FONT (FIXED — do NOT choose): load the Google Font "Outfit" and apply it globally as the single app-wide
   typeface (headings, body, UI, numbers); do NOT substitute another font. Import weights 400/500/600/700 via Google
-  Fonts and set Outfit as the default font-family in tailwind.config.js + index.css.
+  Fonts and set Outfit as the default font-family in tailwind.config.js + index.css. Type treatment (gives
+  the UI its polish): body 400, labels/nav links 500, headings + metric values 600-700; slight negative
+  letter-spacing on headings (~-0.02em) and large stat numbers (~-0.03em); font-variant-numeric: tabular-nums
+  on all numeric values (stat figures + numeric table columns); table column headers small (~0.78rem) UPPERCASE
+  muted (--color-muted), ~0.04em letter-spacing, weight 600.
 - SIGNATURE ELEMENT (FIXED — must ALWAYS appear): every elevated surface — shadcn Cards (especially dashboard stat
   cards), Dialog/AlertDialog modals, and the Navbar — uses the blue-tinted accent shadow var(--shadow-accent)
-  (0 4px 14px -4px rgba(0, 63, 145, 0.25), where 0,63,145 = #003F91), NEVER a neutral gray shadow. In dark mode keep
-  the hue but raise the alpha (e.g. rgba(0, 63, 145, 0.45)). This soft blue glow is the project's one consistent
-  visual quirk, present in every build; removed only inside @media print.
+  (0 4px 14px -4px rgba(0, 63, 145, 0.25), where 0,63,145 = #003F91), NEVER a neutral gray shadow. This soft blue
+  glow is the project's one consistent visual quirk, present in every build; removed only inside @media print.
 - Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical padding (p-6),
   field gap (gap-4), label style, and input height for visual coherence inside the working app. This uniformity
   rule applies ONLY to entity forms; the public auth pages are exempt from it — the AuthPage uses its FIXED two-part
@@ -450,8 +448,10 @@ uses the 4-digit code flow. An idempotent admin seed runs on startup (see SEEDIN
 === REPORTS LOGIC (MongoDB aggregation ONLY) ===
 One aggregation pipeline per report — implement those in the brief (honoring name/shows/grouping/columns/filter, blanks
 defaulted), else design two. Use $match (default date filter = today), $lookup (join referenced entities), $group
-(totals), $sort, and $project (output columns). No raw queries, no SQL. The dashboard endpoint likewise aggregates the
-stat-card metrics, the summary-block rows, and the time series for the line chart.
+(totals), $sort, and $project (output columns). No raw queries, no SQL. Unless data visibility is "shared", begin every
+report pipeline AND the dashboard pipeline with an owner $match scoping to the current user (admin unscoped only in
+"admin sees all" mode — see DATA OWNERSHIP & VISIBILITY). The dashboard endpoint likewise aggregates the
+stat-card metrics and the summary-block rows.
 
 === CODE QUALITY ===
 Clean, readable, consistently formatted; one responsibility per file/function. Descriptive names (PascalCase
@@ -460,6 +460,12 @@ no commented-out blocks, no leftover console.log (console.error for real errors 
 named constants). Small focused functions; extract repeats into helpers. Keep layers separate (controllers hold logic,
 routes are thin, models hold schema; components stay presentational, data/auth live in api modules/AuthContext/hooks).
 async/await with try/catch throughout. Consistent module style; ordered imports (external then internal).
+Comments: add brief, purposeful comments ONLY where logic is non-obvious or a complex decision was made — e.g. the
+recovery-code hashing / one-time-code flow, re-selecting a select:false field before bcrypt.compare, server-side
+computed-field calculation, the owner-scoping / data-visibility filter, each MongoDB aggregation pipeline (one line on
+what it computes), the segmented Auth routing via useLocation, and any non-trivial validation/regex. Explain the WHY,
+not the obvious WHAT; one short line each. They double as presentation/explanation hints, so keep them sparse — do NOT
+narrate every line or comment self-explanatory code.
 
 === SEEDING ===
 Run an idempotent seed on startup (insert only when the collection is empty, so restarts never duplicate). Seed one admin
@@ -468,7 +474,9 @@ from SEED_ADMIN_RECOVERY_CODE (stored hashed — a known 4-digit code so the rec
 username (never the password or code). Read SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD / SEED_ADMIN_RECOVERY_CODE from env
 (labelled dev defaults only; never hardcode real credentials). REQUIRED: also seed a few valid sample rows per entity
 (respecting relationships and validation, with some rows dated today) so tables, the dashboard, and reports render non-empty
-on first run. Seeding must not block or interfere with normal registration.
+on first run. Unless data visibility is "shared", set each seeded row's `owner` to the seeded admin so the demo data is the
+ADMIN's only and is NOT visible to other registered users (see DATA OWNERSHIP & VISIBILITY). Seeding must not block or
+interfere with normal registration.
 
 === REQUIRED ENVIRONMENT VARIABLES ===
 All secrets/environment values come from process.env via dotenv — never hardcoded. backend .env.example lists each with a
@@ -533,11 +541,27 @@ add a `role` field to Users and a requireRole(...roles) middleware; protect sens
 backend (the server is the source of truth). If the domain has no meaningful role distinction, use a single role and say so
 in the assumptions summary — don't invent unnecessary roles.
 
+=== DATA OWNERSHIP & VISIBILITY ===
+By DEFAULT every domain record is OWNED by its creator, and each user sees and manages ONLY their own records. The optional
+"Data visibility" brief field selects the mode:
+- (blank) PER-USER (default): add an `owner` field (ObjectId ref → User, required, indexed) to EVERY domain entity. Create
+  sets owner = the logged-in user (req.session.userId) SERVER-SIDE (never trust a client-sent owner). EVERY
+  list/get/update/delete AND every dashboard/report aggregation filters by owner = the current user (add owner to the
+  $match). A user may only update/delete a record they own — treat another user's record as not found (404). The seed
+  assigns ALL sample rows to the seeded admin, so the demo data is visible to the ADMIN ONLY and never leaks to other users.
+- "shared": all users share ONE dataset — omit the owner scoping (records are global) and the seeded data is visible to
+  everyone. You MAY still store owner/createdBy for audit, but do NOT filter by it.
+- "admin sees all": PER-USER for regular users, BUT the admin is a super-user — when the logged-in user is the admin, skip
+  the owner filter ({ owner: userId } for regular users, {} for the admin) so the admin views/manages every user's records;
+  the admin still owns the seeded rows.
+Owner is always set and enforced SERVER-SIDE; the { data }/{ error } shape and every other rule are unchanged. Identify the
+admin as the Navbar rule does (a role/isAdmin field or SEED_ADMIN_USERNAME). State the chosen mode in the assumptions summary.
+
 === ACCESSIBILITY ===
 Every input has an associated <Label> (htmlFor/id); icon-only buttons have aria-label. Validation errors are programmatically
 associated (aria-describedby) and announced (role="alert" / aria-live), never conveyed by color alone. Full keyboard
 operability: logical tab order, visible accent focus rings, Enter submits, Esc closes dialogs; dialogs trap and restore
-focus. WCAG AA contrast in BOTH themes. Use semantic landmarks (nav, main, header/footer) and meaningful alt text. Respect
+focus. WCAG AA contrast. Use semantic landmarks (nav, main, header/footer) and meaningful alt text. Respect
 prefers-reduced-motion for spinners/animations.
 
 === PERFORMANCE ===
@@ -551,8 +575,8 @@ responses on unmount).
 === STRICT LIBRARY RULES ===
 Backend ONLY: express, cors, mongoose, bcryptjs, express-session, dotenv, nodemon (dev); express-rate-limit permitted solely
 for throttling. Frontend ONLY: react, react-dom, react-router-dom, axios, tailwindcss, shadcn/ui, @phosphor-icons/react, sonner,
-recharts (dashboard chart), and shadcn's deps (class-variance-authority, clsx, tailwind-merge). MongoDB + Mongoose only for
-data. Phosphor icons only (regular weight via a single IconContext.Provider at the app root); recharts only (used solely on the Dashboard, as a LINE chart). Do NOT add any other dependency (no
+and shadcn's deps (class-variance-authority, clsx, tailwind-merge). MongoDB + Mongoose only for
+data. Phosphor icons only (regular weight via a single IconContext.Provider at the app root). Do NOT add any other dependency (no
 moment, lodash, Redux/Zustand, or other UI/chart libraries) — solve with the allowed stack or note it in the assumptions
 summary. Pin EXACT, mutually-compatible versions in both package.json files (no risky ^ majors): react-router-dom v6 (NOT
 v7); Tailwind CSS v3 (NOT v4) with the matching postcss.config.js, tailwind.config.js, and v3 @tailwind directives; Vite +
@@ -573,8 +597,8 @@ its responsibility.
 === PROJECT README ===
 Generate a single root BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/README.md in clean Markdown, accurate to the app you built (real names, entities,
 routes). Include: project title + a one-paragraph description; tech stack (React 18 + Vite, react-router-dom v6, Node/Express,
-MongoDB/Mongoose, Tailwind v3 + shadcn/ui + Phosphor Icons (regular weight), recharts); a short features list (auth with registration + 4-digit
-recovery, a dashboard with stat cards and a chart, per-entity CRUD, reports with print); a brief structure tree; prerequisites
+MongoDB/Mongoose, Tailwind v3 + shadcn/ui + Phosphor Icons (regular weight)); a short features list (auth with registration + 4-digit
+recovery, a dashboard with stat cards and a summary, per-entity CRUD, reports with print); a brief structure tree; prerequisites
 (Node LTS, a running MongoDB); copy-pasteable setup/run steps for BOTH projects (npm install, cp .env.example to .env, npm run
 dev; API on :5000, app on :5173); an env-var table (no real secrets); a seeded-admin note (credentials from the SEED_ADMIN_*
 env vars, never printing a real password); an API reference (method + path + one-line purpose, grouped by resource); an
@@ -612,9 +636,9 @@ Backend:
   includes the /dashboard handler) ; routes/{auth,[entity1..3],reports}.routes.js (reports = dashboard + per-report) ;
   middleware/requireAuth.js (+ middleware/requireRole.js only if the domain needs roles)
 Frontend:
-  package.json (pinned: React 18, react-router-dom v6, Tailwind v3, recharts) ; vite.config.js (React plugin + `@/`→src) ;
-  jsconfig.json (`@/*`) ; postcss.config.js (Tailwind v3 + autoprefixer) ; .env.example ; tailwind.config.js (v3,
-  darkMode:'class') ; index.html (Vite HTML entry + inline theme-flash guard) ; src/index.css (v3 directives + tokens + font + @media print) ; src/main.jsx (React render root) ; src/lib/utils.js (cn) ;
+  package.json (pinned: React 18, react-router-dom v6, Tailwind v3) ; vite.config.js (React plugin + `@/`→src) ;
+  jsconfig.json (`@/*`) ; postcss.config.js (Tailwind v3 + autoprefixer) ; .env.example ; tailwind.config.js (v3) ;
+  index.html (Vite HTML entry) ; src/index.css (v3 directives + tokens + font + @media print) ; src/main.jsx (React render root) ; src/lib/utils.js (cn) ;
   src/components/ui/* (every shadcn component you import, in full) ; src/App.jsx (BrowserRouter + AuthProvider + routes +
   ProtectedRoute + global Toaster; includes <IconContext.Provider value={{ weight: 'regular' }}>; /login + /register both render AuthPage) ; src/context/AuthContext.jsx ; src/api/{axiosClient,authAPI,[entity1..3]API,
   reportsAPI}.js (reportsAPI includes getDashboard) ; src/components/{Navbar,ProtectedRoute}.jsx ;
