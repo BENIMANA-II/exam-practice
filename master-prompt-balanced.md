@@ -288,10 +288,13 @@ DATA OWNERSHIP & VISIBILITY.
    as <AuthProvider> and <Toaster>, so every Phosphor icon inherits the regular weight.
 
 Pages:
-  a. LandingPage (route /) — PUBLIC: a marketing showcase for [SYSTEM NAME]. DO NOT default to the same generic
-     hero + about + 3-card grid + "how it works" + footer recipe every time — choose a layout that fits the domain
-     and the optional brief "Layout style" (split-screen, full-bleed statement, stat strip, editorial, side-panel,
-     classic hero + cards, etc.) and make it look meaningfully different from the AI's default each run. Required
+  a. LandingPage (route /) — PUBLIC: a marketing showcase for [SYSTEM NAME]. FIXED LAYOUT — render it as a
+     centered-hero, card-based Modern Minimal SaaS landing page, the SAME shape every run (do NOT vary per run):
+     a vertically centered hero (system name, a one-line value prop, and both CTAs, center-aligned) above a responsive
+     grid of capability/feature cards on a clean light background, with Soft-UI shadows (soft, diffused, low-contrast
+     elevation via var(--shadow-accent); no hard borders or gray drop shadows) and a SINGLE accent color
+     (--color-accent #003F91) as the only chromatic emphasis (primary CTA fill, icon accents, highlights — everything
+     else neutral). Minimal, modern, whitespace-generous; the brief "Layout style" may tune tone but not this structure. Required
      behavior independent of the chosen layout: the system name + a one-line value prop are present; two obvious hero CTAs — a primary "Get Started" (Phosphor ArrowRight)
      routing to /register (the AuthPage's Sign Up segment) and a secondary "Explore More" (variant="outline", Phosphor
      ArrowDown) that smooth-scrolls to the services/capabilities section (give it id="services"; href="#services" or
@@ -303,8 +306,9 @@ Pages:
   a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: the public surfaces (Landing, the combined AuthPage, Recover) must look
      meaningfully different from one another and reflect the system's domain. They are NOT all the same centered
      card on a plain background. The AuthPage has a FIXED layout — the two-part floating card (showcase + form) in
-     (b) below; Landing and Recover must each look distinct from it and from each other. Pick layouts that suit the
-     project (split-screen, full-bleed, editorial, stat strip, single-statement, classic card, side-panel, etc.)
+     (b) below; Landing has its own FIXED centered-hero, card-based layout from (a) (hero + card grid — clearly
+     distinct from the AuthPage's single floating card); Recover must look distinct from BOTH — pick a layout for
+     Recover that suits the project (split-screen, full-bleed, editorial, stat strip, single-statement, side-panel, etc.)
      while still using the design tokens and respecting
      accessibility. Coherence via tokens stays; visual sameness across the public surfaces does NOT.
   b. AuthPage (routes /login AND /register) — PUBLIC: LAYOUT (FIXED) — render the page as ONE floating card centered

@@ -400,12 +400,16 @@ the code, and keep ERD.md consistent with the models you actually build.
 
    a. LandingPage (route: /)  ← PUBLIC, no auth required
       - A marketing-style page that showcases [SYSTEM NAME] for [COMPANY/ORGANIZATION NAME].
-        DO NOT default to the same generic hero + about + 3-card grid + "how it works" + footer
-        recipe every time. Choose a layout that fits the domain and the optional "Layout style"
-        from the brief — for example a split-screen (copy left, visual/stat right), a full-bleed
-        statement page, a stat strip, an editorial long-form layout, a side-panel + content
-        layout, a classic hero + feature cards, or another shape you design. The layout MUST
-        look meaningfully different from the AI's default each run.
+        FIXED LAYOUT — render this as a centered-hero, card-based Modern Minimal SaaS landing page,
+        the SAME shape every run (do NOT vary the layout per run): a vertically centered hero block
+        (system name, a one-line value proposition, and the two hero CTAs, all center-aligned) sitting
+        above a responsive grid of capability/feature CARDS, on a clean, uncluttered light background.
+        Use Soft-UI shadows throughout — soft, diffused, low-contrast elevation via var(--shadow-accent)
+        on the cards and the primary button, no hard borders or heavy gray drop shadows — and a SINGLE
+        accent color (the --color-accent token) as the only chromatic emphasis: the primary CTA fill,
+        icon accents, and key highlights all draw from that one accent, with everything else staying
+        neutral. Keep it minimal, modern, and generous with whitespace. (The "Layout style" brief field,
+        if given, may tune tone/spacing/imagery but does NOT change this centered-hero card structure.)
       - Required behavior (independent of the layout you choose):
           * The system name and a one-line value proposition for [COMPANY/ORGANIZATION NAME] are present
           * Two hero CTAs are present and obvious: a PRIMARY "Get Started" button (Phosphor ArrowRight
@@ -430,12 +434,13 @@ the code, and keep ERD.md consistent with the models you actually build.
       The public surfaces (LandingPage, the combined AuthPage, RecoverPage) must look meaningfully
       different from one another and reflect the system's domain. They are NOT all the same
       centered card on a plain background. The AuthPage has a FIXED layout — the two-part floating
-      card (showcase + form) defined in (b) below; LandingPage and RecoverPage must each look
-      distinct from it and from each other. Pick layouts that suit the project — split-screen,
-      full-bleed, editorial, stat strip, single-statement, classic card, side-panel, etc. — while
-      still using the design tokens (palette, font, accent), respecting accessibility (contrast,
-      focus, labels), and using shadcn/ui components for interactive elements. Coherence with the
-      authenticated app's tokens stays; visual sameness across the public surfaces does NOT.
+      card (showcase + form) defined in (b) below; the LandingPage has its own FIXED centered-hero,
+      card-based layout from (a) above — its hero-plus-card-grid already reads as clearly distinct
+      from the AuthPage's single floating card. RecoverPage must look distinct from BOTH — pick a
+      layout that suits the project (split-screen, full-bleed, editorial, stat strip, single-statement,
+      side-panel, etc.) — while still using the design tokens (palette, font, accent), respecting
+      accessibility (contrast, focus, labels), and using shadcn/ui components for interactive elements.
+      Coherence with the authenticated app's tokens stays; visual sameness across the public surfaces does NOT.
 
    b. AuthPage (routes: /login AND /register)  ← PUBLIC, no auth required
       - LAYOUT (FIXED): render the AuthPage as a single FLOATING CARD centered both vertically and
