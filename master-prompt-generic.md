@@ -17,11 +17,15 @@ Database engine (optional):       ______________________________
    SQL options: MySQL (default) / PostgreSQL / SQLite.   NoSQL options: MongoDB.
    If engine is given, it wins and implies the type.)
 
-Entities (optional — leave blank to let the AI choose; aim for 3 domain entities + Users):
+Entities (optional — leave blank to let the AI choose; aim for 3 domain entities + Users. List each entity
+WITH its own attributes if you want; whatever you write is used VERBATIM — the AI only infers each
+attribute's type/constraints and the relationships, and fills in anything you leave blank):
   Entity 1 (the "catalogue" item):     ______________________________
+    its attributes: ______________________________
   Entity 2 (the "actor/place"):        ______________________________
+    its attributes: ______________________________
   Entity 3 (the "movement/event" that references Entity 1 and Entity 2): ______________________________
-  Key attributes per entity (optional): ______________________________
+    its attributes: ______________________________
 
 Per-entity operations (optional):  ______________________________
   (default: full CRUD on all three. To restrict, name which are INSERT-ONLY and which are full CRUD.)
@@ -41,11 +45,16 @@ Reports required (optional — leave blank to let the AI design the right ones f
 You are a senior full-stack developer. Build the complete application described in the PROJECT BRIEF
 using React.js (frontend) and Node.js/Express.js (backend). Use the database chosen in the brief: honor the
 Database engine if given; otherwise pick a sensible default for the Database type (relational/SQL -> MySQL,
-document/NoSQL -> MongoDB); if both are blank, default to MySQL. Access it through its OFFICIAL Node.js
-driver with hand-written queries — NO ORM (no Sequelize, no Mongoose, no Prisma). The brief is the only
+document/NoSQL -> MongoDB); if both are blank, default to MySQL. For SQL engines, access the database
+through its OFFICIAL Node.js driver with hand-written, parameterized queries and NO ORM (no Sequelize,
+no Prisma). For MongoDB, you MUST use Mongoose (schemas + models) — it is the one allowed ODM. The brief is the only
 required input. Any blank field and every [SQUARE BRACKET] below is a value YOU derive with a sensible
-default; if a field is filled in, honor it exactly. Do not ask the human to complete the brief or to
-confirm the entities, attributes or relationships — make the most reasonable assumption and proceed.
+default; if a field is filled in, honor it exactly. When the brief names entities and/or their attributes,
+treat them as AUTHORITATIVE — build exactly those entities with exactly those attributes (never rename,
+drop, merge, or invent extra ones); you still infer each attribute's type/constraints and the
+relationships, and you still fill in any entity or attribute left blank. Do not ask the human to complete
+the brief or to confirm the entities, attributes or relationships — make the most reasonable assumption
+and proceed.
 
 Before writing code, output: (1) a short assumptions summary (system name, entities/attributes,
 inferred relationships one line each, per-entity operations, the reports); (2) a Mermaid erDiagram showing
@@ -70,30 +79,38 @@ context diagram) at the project root.
 
 === BACKEND RULES ===
 - Libraries: express, cors, bcryptjs, express-session, dotenv, nodemon, express-rate-limit, PLUS the
-  official driver for the chosen DB (NO ORM): MySQL -> `mysql2` (use the promise pool); PostgreSQL -> `pg`
-  (Pool); MongoDB -> `mongodb` (the native driver, NOT mongoose); SQLite -> `better-sqlite3`.
+  data layer for the chosen DB: MySQL -> `mysql2` (promise pool, no ORM); PostgreSQL -> `pg` (Pool, no ORM);
+  SQLite -> `better-sqlite3` (no ORM); MongoDB -> `mongoose` (schemas + models — the one allowed ODM).
 - For MySQL specifically, config/db.js imports the driver and creates the connection by explicitly passing
   the host, user, password AND database (from env) — so the connection step is unambiguous — then exports
   the pool/connection for the data-access modules.
-- Layered, never mixed: thin routes -> controllers (all logic, validation, status codes, JSON) -> models
-  (data-access modules only: each exports plain functions like findAll/findById/create/update/remove that
-  run the driver queries and return plain objects — no business logic, no HTTP). Reusable checks (auth)
-  live in /middleware.
+- Layered, never mixed: thin routes -> controllers (all logic, validation, status codes, JSON) -> models.
+  For SQL, a model is a data-access module that exports plain functions (findAll/findById/create/update/
+  remove) running the driver queries and returning plain objects. For MongoDB, a model is a Mongoose
+  schema + model (schema definition only — no business logic). Either way, controllers hold the logic, the
+  model holds no HTTP. Reusable checks (auth) live in /middleware.
 - RESPONSE SHAPE (no exceptions): `{ data }` on success, `{ error: "message" }` on failure.
   Status codes: 200/201/400/401/404/500. Protect all non-auth routes with a session-check middleware (401).
-- Auth endpoints: register, login, logout, me, recover/verify, recover/reset.
+- Auth endpoints: register, login, logout, me, recover/verify, recover/reset. Session management is via
+  express-session with httpOnly cookies — NOT JWTs. Configure express-session({ secret: SESSION_SECRET,
+  resave: false, saveUninitialized: false, cookie: { httpOnly: true } }) (also set cookie.secure + an
+  appropriate sameSite in production). On successful register and login, start the session by storing
+  { userId, username } on req.session and respond with `{ data: { user } }`. The session-check middleware
+  (requireAuth) returns 401 when req.session has no userId; owner-scoping and aggregations use
+  req.session.userId. GET /api/auth/me returns the session user, or 401. POST /api/auth/logout destroys
+  the session (req.session.destroy) and clears the cookie.
   * register validates everything, hashes the password, rejects duplicate username/email/phone (400),
     generates a random 4-digit recovery code, stores ONLY its bcrypt hash, and returns the plaintext ONCE.
   * Never return password or recoveryCodeHash to the client: select them only when needed for
-    bcrypt.compare (SQL: an explicit column list / a dedicated "find with secrets" query; document DB:
-    a projection that includes them), and delete those fields from any user object you send back.
-    Throttle login and recovery (4-digit codes are easy to brute-force).
-- All queries go through the official driver using PARAMETERIZED queries (mysql2/pg/sqlite placeholders, or
-  the MongoDB query/aggregation API) — never build query strings by concatenating user input. No ORM.
-  Compute derived fields server-side.
-- On startup: connect to the DB (a single shared pool/client). For SQL engines, create the schema if it
-  does not exist (run CREATE TABLE IF NOT EXISTS statements / a schema.sql) before seeding; for MongoDB,
-  ensure the required indexes. Then seed.
+    bcrypt.compare (SQL: an explicit column list / a dedicated "find with secrets" query; Mongoose: mark
+    them `select:false` and re-select with `.select('+password')`), and delete those fields from any user
+    object you send back. Throttle login and recovery (4-digit codes are easy to brute-force).
+- SQL queries go through the official driver using PARAMETERIZED queries (mysql2/pg/sqlite placeholders) —
+  never build query strings by concatenating user input. MongoDB access goes through Mongoose model methods
+  (find/findById/create/findByIdAndUpdate/deleteOne, aggregate). Compute derived fields server-side.
+- On startup: connect to the DB once (a shared SQL pool, or a single `mongoose.connect`). For SQL engines,
+  create the schema if it does not exist (run CREATE TABLE IF NOT EXISTS statements / a schema.sql) before
+  seeding; for MongoDB, indexes are declared on the Mongoose schemas. Then seed.
 - Seeding (idempotent, on startup): seed one admin from SEED_ADMIN_* env vars with a known recovery code,
   plus a few sample rows per entity (some dated today) owned by the admin. Never duplicate on restart;
   never log the password or code.
@@ -102,9 +119,9 @@ context diagram) at the project root.
   referenced parent record returns 400 (no orphaned movement records) — check for referencing rows before
   deleting (and use RESTRICT foreign keys in SQL).
 - Reports: one aggregation query each, filtered by owner + date range. SQL: a single query with JOINs,
-  GROUP BY and SUM/COUNT, ORDER BY, selecting only the needed columns. MongoDB: one aggregation pipeline
-  ($match owner + date range, $lookup to join, $group to total, $sort, $project). Default the date filter
-  to today. Also one /dashboard aggregation.
+  GROUP BY and SUM/COUNT, ORDER BY, selecting only the needed columns. MongoDB: one Mongoose aggregate()
+  pipeline ($match owner + date range, $lookup to join, $group to total, $sort, $project). Default the date
+  filter to today. Also one /dashboard aggregation.
 
 === FRONTEND RULES ===
 - React 18 + Vite, react-router-dom v6, Tailwind CSS v3, shadcn/ui, Phosphor Icons (regular weight via a
@@ -112,8 +129,10 @@ context diagram) at the project root.
 - Generate every shadcn component you import, in full, under src/components/ui/ (button, input, card,
   table, dialog, alert-dialog, badge, label, tabs, select, alert, sonner) with the cn() util and the
   `@/` alias in vite.config.js AND jsconfig.json. No phantom imports.
-- Auth state via AuthContext (useAuth) that calls GET /api/auth/me on mount and exposes
-  login/logout/register. ProtectedRoute, Navbar, AuthPage and RecoverPage read from useAuth().
+- Auth state via AuthContext (useAuth): it calls GET /api/auth/me on mount to hydrate the session and
+  exposes login/logout/register. ProtectedRoute, Navbar, AuthPage and RecoverPage read from useAuth().
+  axiosClient sets withCredentials:true on every request (so the session cookie is sent) and, on a 401,
+  redirects to /login.
 - Build reusable pieces (declared at module top level, never inside another component): PageWrapper,
   FormField (Label + Input + inline error), StateBlock (loading/error/empty), a confirm dialog, and a
   pagination helper. Pages compose these.
@@ -126,9 +145,16 @@ context diagram) at the project root.
     recovery code (copy + download + "I've saved it" before continuing).
   * RecoverPage (/recover) — PUBLIC, verify code -> set new password -> show the new one-time code.
   * DashboardPage (/dashboard) — PROTECTED, >=4 stat cards (counts + one SUM/AVG) and a recent-activity
-    summary, from a single /api/reports/dashboard call. Optional Quick Actions that open create modals.
-  * One page per entity — create form + searchable, sortable, paginated table; full-CRUD entities get a
-    per-row Edit (Dialog) and Delete (AlertDialog).
+    summary, from a single /api/reports/dashboard call. A "Quick Actions" card (REQUIRED) sits beside the
+    summary (e.g. lg:grid-cols-3, summary lg:col-span-2, Quick Actions lg:col-span-1) and lists one button
+    per full-CRUD entity (Phosphor icon + "New {Entity}" label + one-line description); clicking opens that
+    entity's create form in a Dialog modal (reusing its {Entity}Form), and a successful create closes the
+    modal and re-fetches /api/reports/dashboard so the stats refresh.
+  * One page per entity — TWO cards in a responsive grid (lg:grid-cols-2): a "New {Entity}" card holding
+    the create form, and an "All {Entity}s" card holding the searchable, sortable, paginated table (each
+    card a shadcn Card with a CardTitle of exactly "New {Entity}" / "All {Entity}s"). Full-CRUD entities
+    get a per-row Edit (Dialog) and Delete (AlertDialog); an INSERT-ONLY entity shows only the
+    "New {Entity}" card.
   * ReportsPage (/reports) — Tabs (one per report), a filter control (default a date picker = today, or a
     daily/weekly/monthly selector), an empty state, and a Print button (window.print) with a print-only
     header/footer; print the FULL report, not just the current page.
@@ -140,7 +166,7 @@ context diagram) at the project root.
   actually used; explicit event handlers (onClick/onChange/onSubmit) with arguments passed where needed;
   list rendering with .map and stable keys.
 - Responsive, mobile-first design on every page: Tailwind flex and grid utilities with responsive
-  breakpoints (sm/md/lg); layouts reflow cleanly from phone to desktop and stay readable; interactive
+  breakpoints (Tailwind sm/md/lg prefixes and/or CSS @media queries); layouts reflow cleanly from phone to desktop and stay readable; interactive
   elements keep visible hover and focus states.
 
 === VALIDATION (client AND server) ===
@@ -160,7 +186,8 @@ context diagram) at the project root.
 - Signature shadow on every elevated surface (cards, modals, navbar):
   --shadow-accent: 0 4px 14px -4px rgba(0, 63, 145, 0.25);  (removed only in @media print).
 - Font (FIXED): Google Font "Outfit" applied globally (weights 400/500/600/700); tabular-nums on all
-  figures; small uppercase muted table-column headers; slight negative letter-spacing on headings/big numbers.
+  figures, which are shown in FULL with thousands separators (never compacted or abbreviated — no 1.2k or $1.2M);
+  small uppercase muted table-column headers; slight negative letter-spacing on headings/big numbers.
 - No emoji; Phosphor icons only at consistent sizes. No purple gradients on white.
 - @media print: `.no-print` hides chrome; `.print-only` shows the report header/footer; tables print as
   plain black-on-white with borders and no shadows.
@@ -186,7 +213,8 @@ context diagram) at the project root.
 ├── backend-project/
 │   ├── package.json (pinned; "dev": nodemon)   ├── .env.example   ├── server.js
 │   ├── config/ (db.js, seed.js   [+ schema.sql for SQL engines])
-│   ├── models/ (User.js, [Entity1].js, [Entity2].js, [Entity3].js — data-access modules)
+│   ├── models/ (User.js, [Entity1].js, [Entity2].js, [Entity3].js — data-access modules for SQL,
+│   │            Mongoose schemas/models for MongoDB)
 │   ├── controllers/ (auth, [entity1], [entity2], [entity3], reports .controller.js)
 │   ├── routes/ (auth, [entity1], [entity2], [entity3], reports .routes.js)
 │   └── middleware/ (requireAuth.js   [+ requireRole.js only if the domain needs roles])

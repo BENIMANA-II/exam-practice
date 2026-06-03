@@ -7,7 +7,10 @@ System name (optional):        ______________________________
 Company/organization (optional): ______________________________
 Database name (optional):      ______________________________
 Entities to use (optional):    ______________________________
-  (e.g. "Student, Invoice, Payment"; leave blank to let the AI choose)
+  (e.g. "Student, Invoice, Payment"; blank = AI chooses. You MAY give each entity WITH its attributes,
+   e.g. "Student(fullName, regNo, class); Invoice(student, amount, dueDate, status); Payment(invoice,
+   amount, paidOn)" — anything you write is used VERBATIM; the AI only infers types/constraints/
+   relationships and fills in what you leave blank.)
 Per-entity operations (optional): ______________________________
   (default: full CRUD on every entity. To restrict, say which entities are INSERT-ONLY — a create form
    only, no edit/delete — and which get full Create/Read/Update/Delete, e.g.
@@ -51,7 +54,9 @@ Design everything yourself from the brief:
 2. Decide the entities (use those listed in the brief if given; otherwise invent a sensible set —
    default 3 domain entities plus Users, but use fewer or more if the project clearly needs it).
 3. Decide each entity's attributes, their types, and constraints (required, unique, numeric, dates,
-   dropdowns, computed, etc.).
+   dropdowns, computed, etc.). If the brief lists an entity's attributes, use EXACTLY those (verbatim —
+   never rename, drop, or add) and only infer their types/constraints; design the attributes yourself
+   only for entities whose attributes were left blank.
 4. ANALYZE the entities and attributes to infer all relationships yourself — which fields are
    foreign-key references, their direction, and cardinality (see "How to infer relationships" below).
 5. Reports: if the brief lists reports, build EXACTLY those — one tab, one endpoint, and one MongoDB
@@ -99,7 +104,7 @@ code before the earlier analysis/design phases are done.
   Phase 2 — Model & Relationships (ERD): analyze the attributes to infer all relationships
     (foreign keys, direction, cardinality), then output the relationship reasoning and the Mermaid ERD.
   Phase 3 — Backend Foundation: set up the backend project — package.json, server.js (cors, JSON,
-    session, env validation, mongoose.connect, listen), config/db.js, .env.example, and the env vars.
+    env validation, mongoose.connect, listen), config/db.js, .env.example, and the env vars.
   Phase 4 — Data Layer (Models): create one Mongoose model per collection, including the inferred
     refs, indexes, unique constraints, and hashed/sensitive-field handling.
   Phase 5 — Backend Logic (Controllers, Routes, Middleware, Auth): implement controllers (all logic,
@@ -216,8 +221,8 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
         │   └── reportsAPI.js         ← getDashboard() + one fetcher per report
         │
         ├── components/
-        │   ├── Navbar.jsx            ← Dashboard + entity links + Reports +
-        │   │                           user/role label + Logout + mobile menu
+        │   ├── Navbar.jsx            ← LEFT SIDEBAR RAIL: brand + Dashboard + entity links
+        │   │                           + Reports + user/role label + Logout + mobile drawer
         │   ├── ProtectedRoute.jsx    ← reads useAuth(); redirects to /login if no user
         │   │
         │   └── ui/                   ← shadcn components generated in full (NOT npm)
@@ -239,7 +244,7 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
             ├── AuthPage.jsx          ← PUBLIC: Sign In + Sign Up on one page (segmented control),
             │                           rendered at BOTH /login and /register
             ├── RecoverPage.jsx       ← PUBLIC: verify code → reset password
-            ├── DashboardPage.jsx     ← PROTECTED: ≥4 stat cards + summary block
+            ├── DashboardPage.jsx     ← PROTECTED: ≥4 stat cards + summary + Quick Actions
             ├── [Entity1]Page.jsx     ← full CRUD: create + table + edit/delete
             ├── [Entity2]Page.jsx     ← full CRUD: create + table + edit/delete
             ├── [Entity3]Page.jsx     ← full CRUD: create + table + edit/delete
@@ -294,10 +299,10 @@ the code, and keep ERD.md consistent with the models you actually build.
 
 === BACKEND REQUIREMENTS ===
 1. Use express.js, cors, mongoose, bcryptjs, express-session, dotenv, nodemon.
-2. server.js must include: cors middleware (origin restricted to CLIENT_URL, credentials:true),
-   JSON body parser, session middleware, env-var validation (exit if MONGODB_URI or SESSION_SECRET
-   missing), mongoose.connect() with connection success/failure logs, all routes registered,
-   and app.listen() with a startup console message.
+2. server.js must include: cors middleware (origin restricted to CLIENT_URL, credentials:true), JSON body
+   parser, session middleware, env-var validation (exit if MONGODB_URI or SESSION_SECRET missing),
+   mongoose.connect() with connection success/failure logs, all routes registered, and app.listen() with
+   a startup console message.
 3. Create one Mongoose model file per collection under /models.
 4. Use a controller layer: put all handler logic in /controllers (one controller file per resource —
    e.g. auth.controller.js, [entity1].controller.js, [entity2].controller.js, [entity3].controller.js,
@@ -306,17 +311,19 @@ the code, and keep ERD.md consistent with the models you actually build.
    are THIN — they only create the express.Router(), map each HTTP method + path to the matching
    controller function, attach middleware (e.g. requireAuth), and export the router. No business
    logic or database calls inline in route files. The routes below map to controller functions:
-   - POST   /api/auth/register           — create a new user account, then start session
+   - POST   /api/auth/register           — create a new user account, then start the session
                                             (validate fullName, email, phone, username, password
                                              server-side; hash password; reject duplicate
                                              username/email/phone with a 400 + clear message;
                                              generate a random 4-digit recovery code, store ONLY its
                                              bcrypt hash in recoveryCodeHash, and return the plaintext
                                              code ONCE in the response so the user can save it — the
-                                             plaintext code is never stored and never returned again)
-   - POST   /api/auth/login              — validate credentials, start session
-   - POST   /api/auth/logout             — destroy session
-   - GET    /api/auth/me                 — return session user or 401
+                                             plaintext code is never stored and never returned again;
+                                             respond with { data: { user } })
+   - POST   /api/auth/login              — validate credentials, start the session
+                                            (respond with { data: { user } })
+   - POST   /api/auth/logout             — destroy the session (req.session.destroy) and clear the cookie
+   - GET    /api/auth/me                 — return the session user, or 401
    - POST   /api/auth/recover/verify     — body: { username (or email), recoveryCode }; look up the
                                             user and bcrypt.compare the submitted 4-digit code against
                                             recoveryCodeHash; on match return 200 (allow proceeding to
@@ -365,7 +372,8 @@ the code, and keep ERD.md consistent with the models you actually build.
 7. Return correct HTTP status codes: 200, 201, 400, 401, 404, 500.
 8. Response shape is consistent with NO exceptions: success returns { data: ... } JSON, and every
    try/catch failure returns { error: message } JSON (see ARCHITECTURE RULES).
-9. Protect all non-auth routes with a session-check middleware that returns 401 if not logged in.
+9. Protect all non-auth routes with requireAuth — a session-check middleware that returns 401 if
+   req.session has no userId (i.e. the user is not logged in).
 10. Data scoping (default): every domain entity's create/list/update/delete AND the dashboard/report
    aggregations are scoped to the logged-in user as `owner` — create sets owner server-side, reads
    filter by owner, and update/delete only touch records the user owns (404 otherwise). The "shared"
@@ -390,10 +398,11 @@ the code, and keep ERD.md consistent with the models you actually build.
    IconContext.Provider at the app root. No emoji, no other icon packs.
 3b. Auth state via React Context: create src/context/AuthContext.jsx exporting an AuthProvider and a
    useAuth() hook. The provider holds { user, loading } and exposes login(), logout(), register(),
-   and a refresh()/checkAuth() that calls GET /api/auth/me. Wrap the app in <AuthProvider> (in
-   App.jsx, inside BrowserRouter). On mount the provider calls /api/auth/me once to hydrate the
-   session. ProtectedRoute, Navbar, AuthPage, and RecoverPage read auth state and
-   actions from useAuth() instead of calling the auth API directly or duplicating the /me check.
+   and a refresh()/checkAuth() that calls GET /api/auth/me. Wrap the app in <AuthProvider> (in App.jsx,
+   inside BrowserRouter). On mount the provider calls /api/auth/me once to hydrate { user } (a 401 just
+   means no active session — set user=null). ProtectedRoute, Navbar, AuthPage,
+   and RecoverPage read auth state and actions from useAuth() instead of calling the auth API directly
+   or duplicating the /me check.
 3c. Wrap the app in <IconContext.Provider value={{ weight: 'regular' }}> (from @phosphor-icons/react)
    at the same level as <AuthProvider> and <Toaster>, so every Phosphor icon inherits the regular weight.
 4. Build the following pages:
@@ -447,7 +456,7 @@ the code, and keep ERD.md consistent with the models you actually build.
         horizontally on the public background, elevated with the signature accent shadow and rounded
         corners (rounded-2xl, overflow-hidden), with a sensible max width (≈ max-w-4xl). The card is
         DIVIDED INTO TWO PARTS sitting side by side on md+ (e.g. grid md:grid-cols-2, equal height):
-          * SHOWCASE part — a branded panel filled with --color-accent (#003F91), light text on the
+          * SHOWCASE part — a branded panel filled with --color-accent (#047857), light text on the
             accent, presenting the system name, a one-line value proposition, and 3-4 of the domain's
             core capabilities (each a Phosphor icon + short label: managing [Entity1], recording
             [Entity2], tracking [Entity3], viewing Reports). This is the identity/marketing side — it
@@ -456,11 +465,11 @@ the code, and keep ERD.md consistent with the models you actually build.
             validation, submit, and the recovery-code step), plus the "Back to home" link.
         Responsive: below md the card stacks to ONE column — the showcase collapses to a compact header
         (system name + tagline) above the form, or is hidden — and the form part takes the full width
-        (px-4 on mobile). The accent showcase panel keeps WCAG AA contrast (light text on #003F91).
+        (px-4 on mobile). The accent showcase panel keeps WCAG AA contrast (light text on #047857).
       - ONE page that combines Sign In and Sign Up via a segmented control at the top of the FORM part, exactly like the
         reference design: implement the control with the shadcn Tabs component styled as a segmented pill
         — two segments, "Sign In" (Phosphor SignIn icon) and "Sign Up" (Phosphor UserPlus icon), the
-        ACTIVE segment filled with --color-accent (#003F91) and the inactive segment muted. Below the
+        ACTIVE segment filled with --color-accent (#047857) and the inactive segment muted. Below the
         control sits the shared form area that swaps between the two field sets.
       - Route binding: /login opens with the Sign In segment active, /register with the Sign Up segment
         active. Selecting a segment NAVIGATES to the matching route (navigate('/login') / navigate('/register'))
@@ -532,47 +541,66 @@ the code, and keep ERD.md consistent with the models you actually build.
         label, and the metric value (large, using the accent palette). Choose meaningful metrics for
         the domain, for example: total [Entity1] records, total [Entity2] records, total [Entity3]
         records, today's [Entity3] count, and at least one aggregated SUM/AVG (e.g. total revenue,
-        average order value, total quantity). Numbers are human-formatted (separators, currency where
-        relevant).
+        average order value, total quantity). Numbers are human-formatted in FULL with thousands
+        separators — never compacted or abbreviated (no 1.2k or $1.2M) — currency where relevant.
       - A small summary block in addition to the cards: a compact shadcn Table OR a short list giving
         a breakdown that complements the cards — e.g. a "recent activity" mini-table of the latest few
         [Entity3] records, or a per-[Entity1] totals breakdown (top items by count/total). Keep it
         brief (about 5 rows).
+      - Quick Actions card (REQUIRED): place the summary block and a "Quick Actions" card side by side in
+        a responsive grid (e.g. lg:grid-cols-3 with the summary at lg:col-span-2 and Quick Actions at
+        lg:col-span-1). The Quick Actions card (a shadcn Card titled "Quick Actions") lists one button per
+        full-CRUD entity — each with a Phosphor icon, a "New [Entity]" label, and a one-line description.
+        Clicking a button opens that entity's create form in a shadcn Dialog modal (reusing the same
+        [Entity]Form component the entity page uses); on successful create the modal closes and the
+        dashboard re-fetches GET /api/reports/dashboard so the stats and summary update immediately.
       - All dashboard data comes from a single real aggregation endpoint GET /api/reports/dashboard
         (returns the stat-card metrics and the summary-block rows); show
         loading/error/empty states
       - Uses the shared Navbar and PageWrapper like the other protected pages
 
    e. [Entity1]Page (route: /[entity1route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
-      - Form fields: [list all Entity1 fields with types and constraints]
+      - LAYOUT (FIXED): two cards in a responsive grid (lg:grid-cols-2) — a "New [Entity1]" card holding
+        the create form (left), and an "All [Entity1]s" card holding the records table (right). Each is a
+        shadcn Card whose CardTitle is exactly "New [Entity1]" / "All [Entity1]s"
+      - "New [Entity1]" card form fields: [list all Entity1 fields with types and constraints]
       - [If computed field exists]: auto-calculate and display read-only below the inputs
-      - Below form: shadcn Table showing all [Entity1] records with Edit (PencilSimple icon)
-        and Delete (Trash icon) per row
+      - "All [Entity1]s" card: a searchable, paginated shadcn Table of all [Entity1] records with Edit
+        (PencilSimple icon) and Delete (Trash icon) per row
       - Edit opens a pre-filled shadcn Dialog modal
       - Delete shows shadcn AlertDialog confirmation, then DELETEs that single record only
         (this removes one row from the collection — it must never delete the project or database)
 
    f. [Entity2]Page (route: /[entity2route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
-      - Form fields: [Entity1] dropdown (populated from API), [list remaining fields]
+      - LAYOUT (FIXED): two cards in a responsive grid (lg:grid-cols-2) — a "New [Entity2]" card holding
+        the create form (left), and an "All [Entity2]s" card holding the records table (right). Each is a
+        shadcn Card whose CardTitle is exactly "New [Entity2]" / "All [Entity2]s"
+      - "New [Entity2]" card form fields: [Entity1] dropdown (populated from API), [list remaining fields]
       - [dateField] must not be in the future (client-side: max = today's date)
-      - Below form: shadcn Table with Edit (PencilSimple icon) and Delete (Trash icon) per row
+      - "All [Entity2]s" card: a searchable, paginated shadcn Table with Edit (PencilSimple icon) and
+        Delete (Trash icon) per row
       - Edit opens a pre-filled shadcn Dialog modal
       - Delete shows shadcn AlertDialog confirmation, then DELETEs that single record only
         (this removes one row from the collection — it must never delete the project or database)
 
    g. [Entity3]Page (route: /[entity3route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
-      - Form fields: [Entity1] dropdown, [list all fields with types and constraints]
+      - LAYOUT (FIXED): two cards in a responsive grid (lg:grid-cols-2) — a "New [Entity3]" card holding
+        the create form (left), and an "All [Entity3]s" card holding the records table (right). Each is a
+        shadcn Card whose CardTitle is exactly "New [Entity3]" / "All [Entity3]s"
+      - "New [Entity3]" card form fields: [Entity1] dropdown, [list all fields with types and constraints]
       - [If quantity-vs-stock validation needed]: [Entity3 quantity] must not exceed available stock
       - [dateField] must not be in the future
-      - Below form: shadcn Table with Edit (PencilSimple icon) and Delete (Trash icon) per row
+      - "All [Entity3]s" card: a searchable, paginated shadcn Table with Edit (PencilSimple icon) and
+        Delete (Trash icon) per row
       - Edit opens a pre-filled shadcn Dialog modal
       - Delete shows shadcn AlertDialog confirmation, then DELETEs that single record only
         (this removes one row from the collection — it must never delete the project or database)
 
-   By DEFAULT every domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog)
-   pattern. EXCEPTION — per the "Per-entity operations" brief field: an INSERT-ONLY entity's page is a
-   create form ONLY (no edit/delete actions, and no records table unless a read is needed elsewhere);
-   only the full-CRUD entities get the Edit-dialog + Delete-confirm table.
+   By DEFAULT every domain entity page follows this same two-card ("New [Entity]" + "All [Entity]s")
+   Create + Edit (Dialog) + Delete (AlertDialog) pattern. EXCEPTION — per the "Per-entity operations"
+   brief field: an INSERT-ONLY entity's page shows ONLY the "New [Entity]" card (no edit/delete actions,
+   and no "All [Entity]s" table card unless a read is needed elsewhere); only the full-CRUD entities get
+   the "All [Entity]s" card with the Edit-dialog + Delete-confirm table.
 
    h. ReportsPage (route: /reports)
       - Use shadcn Tabs component with ONE TAB PER REPORT — one tab for each report described in
@@ -591,8 +619,14 @@ the code, and keep ERD.md consistent with the models you actually build.
         (give them the .no-print class); the table prints clean. See the @media print rules in
         DESIGN & UI RULES.
 
-   i. Navbar (shared layout component, rendered on all pages except Landing, the AuthPage (/login + /register), and Recover)
-      - Links: Dashboard, [Entity1 label], [Entity2 label], [Entity3 label], Reports, Logout
+   i. Navbar — a LEFT SIDEBAR RAIL (shared layout component, rendered on all pages except Landing, the
+      AuthPage (/login + /register), and Recover). This edition's navigation is a vertical rail, NOT a top bar.
+      - A fixed vertical rail on the left edge on desktop (e.g. w-60, full viewport height, its own surface
+        carrying the signature shadow): the system name/brand pinned at the top, the nav links stacked
+        vertically in the middle, and the user identity + Logout pinned at the bottom
+      - Links (each rendered as an icon + label row): Dashboard, [Entity1 label], [Entity2 label],
+        [Entity3 label], Reports, Logout
+      - The protected pages render in a content area to the RIGHT of the rail (e.g. lg:ml-60)
       - Shows the logged-in user's identity (read from useAuth().user): display their full name. If
         the logged-in user is the seeded admin account (identify the admin via a role/isAdmin field on
         the User, or by matching SEED_ADMIN_USERNAME), display "System Admin" instead of the name. If
@@ -600,11 +634,11 @@ the code, and keep ERD.md consistent with the models you actually build.
         beside the name (e.g. a small accent shadcn Badge). Define the "current user label" once as:
         "System Admin" for the admin, else the user's role when the app is role-based, else the full
         name — the Reports print footer (Pages h) reuses this exact label.
-      - Active link must be visually distinct (consistent accent color underline or background)
-      - Logout calls logout() from useAuth() (which calls POST /api/auth/logout), clears context
-        user state, and redirects to /
-      - Responsive: collapses to hamburger (List icon from Phosphor) on mobile screens
-      - Mobile menu opens as a vertical dropdown, closes on link click
+      - Active link must be visually distinct (the active row filled with the accent, or an accent left-border bar)
+      - Logout calls logout() from useAuth() (which calls POST /api/auth/logout and clears context
+        user state), then redirects to /
+      - Responsive: on mobile the rail collapses to a slim top bar with a hamburger (List icon from
+        Phosphor) that opens the links as a slide-in left drawer; the drawer closes on link click
 
 5. Protected routes: wrap all routes except / (LandingPage), /login and /register (both render the
    AuthPage), and /recover (RecoverPage) in a ProtectedRoute component that reads
@@ -679,15 +713,15 @@ the code, and keep ERD.md consistent with the models you actually build.
   Example variables: --color-bg, --color-surface, --color-accent, --color-text, --color-muted,
   --color-danger, --color-success, --shadow-accent. Use ONLY these variables — never hardcode hex values inline.
   Also define the signature shadow with this exact value:
-    --shadow-accent:    0 4px 14px -4px rgba(0, 63, 145, 0.25);  (blue-tinted card/modal shadow — see SIGNATURE ELEMENT)
+    --shadow-accent:    0 4px 14px -4px rgba(4, 120, 87, 0.25);  (emerald-tinted card/modal shadow — see SIGNATURE ELEMENT)
 - COLOR PALETTE: define every palette token on :root so all colors come from tokens (the app is
   light-mode only — there is no dark theme and no theme toggle). The page background token MUST use
   this exact value:
-    --color-bg: #F6F8FF;
+    --color-bg: #F1FAF6;
   Pick the remaining tokens (surface, text, muted, accent, etc.) to pair tastefully and meet the
   contrast rule in ACCESSIBILITY.
-- SIGNATURE ACCENT (FIXED — do NOT choose): --color-accent is ALWAYS exactly #003F91. There is no
-  choose-from-a-list rule — this single blue is the project's signature and must be identical in every
+- SIGNATURE ACCENT (FIXED — do NOT choose): --color-accent is ALWAYS exactly #047857. There is no
+  choose-from-a-list rule — this single emerald is the project's signature and must be identical in every
   build. The accent must be used consistently for:
   active nav link, primary buttons, focus rings, table row highlights, and badge backgrounds.
 - No purple gradients on white backgrounds.
@@ -704,10 +738,10 @@ the code, and keep ERD.md consistent with the models you actually build.
   font-variant-numeric: tabular-nums so figures align; and style table column headers as small
   (~0.78rem) UPPERCASE muted labels (--color-muted) with ~0.04em letter-spacing and weight 600.
 - SIGNATURE ELEMENT (FIXED — must ALWAYS appear): every elevated surface — shadcn Cards (especially
-  the dashboard stat cards), Dialog/AlertDialog modals, and the Navbar — uses the blue-tinted accent
-  shadow defined above (--shadow-accent: 0 4px 14px -4px rgba(0, 63, 145, 0.25); where 0,63,145 is
-  #003F91), NEVER a neutral gray shadow. Apply box-shadow: var(--shadow-accent) to those surfaces. This
-  soft blue glow is the project's one consistent visual quirk and must be present in every build; it is
+  the dashboard stat cards), Dialog/AlertDialog modals, and the Navbar — uses the emerald-tinted accent
+  shadow defined above (--shadow-accent: 0 4px 14px -4px rgba(4, 120, 87, 0.25); where 4,120,87 is
+  #047857), NEVER a neutral gray shadow. Apply box-shadow: var(--shadow-accent) to those surfaces. This
+  soft emerald glow is the project's one consistent visual quirk and must be present in every build; it is
   removed only inside @media print.
 - Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical
   padding (p-6), gap between fields (gap-4), label style, and input height for visual coherence
@@ -724,7 +758,7 @@ the code, and keep ERD.md consistent with the models you actually build.
 - Tables must be wrapped in overflow-x-auto for horizontal scrolling on small screens.
 - Entity form cards: max-w-xl centered on desktop, full-width with px-4 on mobile. (Public auth
   pages are exempt — their layout is open per the rule above.)
-- Responsive breakpoints must be handled with Tailwind prefixes: sm:, md:, lg: — no inline styles.
+- Responsive breakpoints may be handled with Tailwind prefixes (sm:, md:, lg:) AND/OR CSS @media (min-width/max-width) queries in index.css — both are allowed; avoid inline styles.
 - The LandingPage uses the SAME palette, font, and shadcn components as the rest of the app so the
   public page and the authenticated app feel like one product. Its hero may use the accent color as
   a background or highlight, but still drawn from the CSS variables — never a hardcoded hex value.
@@ -737,10 +771,11 @@ the code, and keep ERD.md consistent with the models you actually build.
 === API INTEGRATION LAYER ===
 src/api/axiosClient.js:
   - baseURL: import.meta.env.VITE_API_URL or http://localhost:5000/api
-  - withCredentials: true (required for session cookies to be sent)
-  - Response interceptor: if status 401, redirect to /login — BUT exempt the AuthContext /api/auth/me
-    hydration call and the public routes (/, /login, /register, /recover) so an unauthenticated visitor
-    on a public page is NEVER bounced to /login (let checkAuth swallow that 401 and set user=null instead)
+  - withCredentials: true (required for the session cookie to be sent on every request)
+  - Response interceptor: if status 401, redirect to /login — BUT exempt the
+    AuthContext /api/auth/me hydration call and the public routes (/, /login, /register, /recover) so an
+    unauthenticated visitor on a public page is NEVER bounced to /login (let checkAuth swallow that 401
+    and set user=null instead)
 
 src/api/authAPI.js         — register(), login(), logout(), getMe(), recoverVerify(), recoverReset()
 src/api/[entity1]API.js    — create[Entity1](), getAll[Entity1]s(), update[Entity1](), delete[Entity1]()
@@ -756,12 +791,16 @@ via useAuth(); auth-related UI (AuthPage/Recover/ProtectedRoute/Navbar) uses use
 than calling authAPI directly. Entity/report pages call their [entity]API/reportsAPI modules directly.
 
 === SESSION-BASED AUTH ===
-- Backend: express-session({ secret: process.env.SESSION_SECRET, resave: false,
-  saveUninitialized: false, cookie: { httpOnly: true } })  (in production also set cookie.secure=true
-  and an appropriate sameSite value)
-- Session stores: { userId, username }
-- Frontend: axiosClient has withCredentials: true on every request
-- On app load, the AuthContext provider calls GET /api/auth/me once to hydrate { user, loading };
+- Session management is via express-session with httpOnly cookies — NO JWTs.
+- Backend: express-session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false,
+  cookie: { httpOnly: true } }) (in production also set cookie.secure=true and an appropriate sameSite value).
+- On successful register/login, start the session by storing { userId, username } on req.session (add
+  `role` only if the domain uses roles) and return { data: { user } }.
+- requireAuth returns 401 when req.session has no userId; req.session.userId is the source of truth for
+  owner-scoping and aggregations.
+- Frontend: axiosClient sets withCredentials:true on every request so the session cookie is sent. logout()
+  calls POST /api/auth/logout (which destroys the session) and clears context.
+- On app load the AuthContext provider calls GET /api/auth/me once to hydrate { user, loading };
   ProtectedRoute uses that state — if no user, redirect to /login
 - Users can self-register via POST /api/auth/register (validated server-side, password hashed).
   Optionally still seed one admin user on server startup if the Users collection is empty, so the
@@ -878,8 +917,9 @@ below are EXAMPLES of typical reports; adapt them to whatever each described rep
   data the table already has; for large sets prefer server-side sorting).
 - Pagination (or virtualized/lazy loading) when a table can exceed ~25 rows — never render thousands
   of rows at once.
-- Format values for humans: dates in a readable locale format, numbers/currency with separators,
-  booleans/enums as shadcn Badges with the accent palette.
+- Format values for humans: dates in a readable locale format, numbers/currency shown in FULL with
+  thousands separators (never compacted or abbreviated — no 1.2k or $1.2M), booleans/enums as shadcn
+  Badges with the accent palette.
 - Every FULL-CRUD entity table shows per-row Edit (PencilSimple) and Delete (Trash) actions; Edit opens a
   pre-filled shadcn Dialog modal, and Delete always goes through the AlertDialog confirmation before calling
   the record-level DELETE endpoint. (INSERT-ONLY entities per the "Per-entity operations" field have no
@@ -919,7 +959,8 @@ below are EXAMPLES of typical reports; adapt them to whatever each described rep
   it from any user object you return to the client.
 - Validate and sanitize ALL input server-side (do not trust client validation); reject malformed input
   with 400. Compute derived/computed fields server-side only.
-- Use httpOnly session cookies; in production set cookie.secure=true and an appropriate sameSite value.
+- Use httpOnly session cookies signed with a strong SESSION_SECRET; in production also set cookie.secure=true
+  and an appropriate sameSite value. Never put the password or recovery hash in the session.
 - CORS allows only the known CLIENT_URL origin with credentials:true — not a wildcard.
 - Return generic auth/recovery errors (don't reveal whether a username/email exists); throttle login and
   recovery attempts to resist brute force (the 4-digit recovery code especially).
@@ -1146,7 +1187,7 @@ Frontend:
   40. frontend-project/src/pages/LandingPage.jsx
   41. frontend-project/src/pages/AuthPage.jsx  (rendered at BOTH /login and /register; segmented Sign In / Sign Up control — replaces the separate Login and Register pages)
   42. frontend-project/src/pages/RecoverPage.jsx
-  43. frontend-project/src/pages/DashboardPage.jsx  (>=4 stat cards + a summary table/list from /api/reports/dashboard)
+  43. frontend-project/src/pages/DashboardPage.jsx  (>=4 stat cards + a summary table/list + a Quick Actions card from /api/reports/dashboard)
   44. frontend-project/src/pages/[Entity1]Page.jsx
   45. frontend-project/src/pages/[Entity2]Page.jsx
   46. frontend-project/src/pages/[Entity3]Page.jsx

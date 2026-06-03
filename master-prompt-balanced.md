@@ -7,7 +7,10 @@ System name (optional):          ______________________________
 Company/organization (optional): ______________________________
 Database name (optional):        ______________________________
 Entities to use (optional):      ______________________________
-  (e.g. "Student, Invoice, Payment"; leave blank to let the AI choose)
+  (e.g. "Student, Invoice, Payment"; blank = AI chooses. You MAY give each entity WITH its attributes,
+   e.g. "Student(fullName, regNo, class); Invoice(student, amount, dueDate, status); Payment(invoice,
+   amount, paidOn)" — anything you write is used VERBATIM; the AI only infers types/constraints/
+   relationships and fills in what you leave blank.)
 Per-entity operations (optional): ______________________________
   (default: full CRUD on every entity. To restrict, name which entities are INSERT-ONLY — create form only, no edit/delete —
    and which get full Create/Read/Update/Delete, e.g. "insert-only: Product, Warehouse; full CRUD: StockTransaction".)
@@ -46,6 +49,8 @@ Design everything yourself from the brief:
 2. Decide the entities — those listed in the brief if given, otherwise a sensible set (default 3 domain
    entities plus Users; use fewer or more if the project clearly needs it).
 3. Decide each entity's attributes, types, and constraints (required, unique, numeric, date, dropdown, computed).
+   If the brief lists an entity's attributes, use EXACTLY those (verbatim — never rename, drop, or add) and only
+   infer their types/constraints; design attributes yourself only for entities left blank.
 4. Infer all relationships yourself from the attributes (see "How to infer relationships" below).
 5. Reports: if the brief lists reports, build EXACTLY those (one tab + one endpoint + one MongoDB aggregation
    each), honoring each report's name, columns, grouping, and filter, with blanks sensibly defaulted. If the
@@ -183,8 +188,8 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
         │   └── reportsAPI.js         ← getDashboard() + one fetcher per report
         │
         ├── components/
-        │   ├── Navbar.jsx            ← Dashboard + entity links + Reports +
-        │   │                           user/role label + Logout + mobile menu
+        │   ├── Navbar.jsx            ← FLOATING PILL TOP-BAR: brand + Dashboard + entity links
+        │   │                           + Reports + user/role label + Logout + mobile dropdown
         │   ├── ProtectedRoute.jsx    ← reads useAuth(); redirects to /login if no user
         │   │
         │   └── ui/                   ← shadcn components generated in full (NOT npm)
@@ -206,7 +211,7 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
             ├── AuthPage.jsx          ← PUBLIC: Sign In + Sign Up on one page (segmented control),
             │                           rendered at BOTH /login and /register
             ├── RecoverPage.jsx       ← PUBLIC: verify code → reset password
-            ├── DashboardPage.jsx     ← PROTECTED: ≥4 stat cards + summary block
+            ├── DashboardPage.jsx     ← PROTECTED: ≥4 stat cards + summary + Quick Actions
             ├── [Entity1]Page.jsx     ← full CRUD: create + table + edit/delete
             ├── [Entity2]Page.jsx     ← full CRUD: create + table + edit/delete
             ├── [Entity3]Page.jsx     ← full CRUD: create + table + edit/delete
@@ -230,9 +235,9 @@ DATA OWNERSHIP & VISIBILITY.
 
 === BACKEND REQUIREMENTS ===
 1. Use express, cors, mongoose, bcryptjs, express-session, dotenv, nodemon.
-2. server.js includes: cors (origin = CLIENT_URL, credentials:true), JSON body parser, session middleware, env
-   validation (exit with a clear console.error if MONGODB_URI or SESSION_SECRET is missing), mongoose.connect()
-   with success/failure logs, all routes registered, and app.listen() with a startup log.
+2. server.js includes: cors (origin = CLIENT_URL, credentials:true), JSON body parser, session middleware,
+   env validation (exit with a clear console.error if MONGODB_URI or SESSION_SECRET is missing),
+   mongoose.connect() with success/failure logs, all routes registered, and app.listen() with a startup log.
 3. One Mongoose model file per collection under /models.
 4. Controller layer: put ALL handler logic in /controllers (one file per resource: auth, [entity1..3], reports).
    Each exports named async handlers containing the try/catch, validation, Mongoose calls, status codes, and JSON
@@ -240,8 +245,9 @@ DATA OWNERSHIP & VISIBILITY.
    middleware (requireAuth), and export. No business logic or DB calls in route files. Routes:
    - POST /api/auth/register   — validate fullName/email/phone/username/password server-side; hash the password;
        reject duplicate username/email/phone (400); generate a random 4-digit recovery code, store ONLY its bcrypt
-       hash, return the plaintext code ONCE; start the session.
-   - POST /api/auth/login ;  POST /api/auth/logout ;  GET /api/auth/me (session user or 401)
+       hash, return the plaintext code ONCE; then start the session and respond with { data: { user } }.
+   - POST /api/auth/login (validate credentials, start session → { data: { user } }) ;  POST /api/auth/logout
+     (destroy the session + clear the cookie) ;  GET /api/auth/me (return the session user, or 401)
    - POST /api/auth/recover/verify  — { username|email, recoveryCode }; bcrypt.compare against recoveryCodeHash;
        generic error on mismatch; throttle attempts (a 4-digit code is only 10,000 combinations).
    - POST /api/auth/recover/reset   — { username|email, recoveryCode, newPassword }; re-verify the code, then hash
@@ -262,7 +268,8 @@ DATA OWNERSHIP & VISIBILITY.
 7. Return correct HTTP status codes: 200, 201, 400, 401, 404, 500.
 8. Response shape with NO exceptions: success returns { data: ... } JSON; every try/catch failure returns
    { error: message } JSON.
-9. Protect all non-auth routes with a session-check middleware that returns 401 if not logged in.
+9. Protect all non-auth routes with requireAuth — a session-check middleware that returns 401 if req.session
+   has no userId (the user is not logged in).
 10. Data scoping (default): scope every domain entity's create/list/update/delete AND the dashboard/report aggregations
    to the logged-in user as `owner` — create sets owner server-side, reads filter by owner, update/delete only touch the
    user's own records (404 otherwise); the "shared" and "admin sees all" modes adjust this. See DATA OWNERSHIP & VISIBILITY.
@@ -281,8 +288,9 @@ DATA OWNERSHIP & VISIBILITY.
 3. Phosphor icons ONLY (@phosphor-icons/react), using the regular weight throughout via a single IconContext.Provider
    at the app root. No emoji, no other icon packs.
 3b. Auth state via React Context (src/context/AuthContext.jsx): export AuthProvider + a useAuth() hook holding
-   { user, loading } and exposing login/logout/register and a checkAuth() that calls GET /api/auth/me. Wrap the app
-   in <AuthProvider> in App.jsx inside BrowserRouter; hydrate the session via /me on mount. ProtectedRoute, Navbar,
+   { user, loading } and exposing login/logout/register and a checkAuth() that calls GET /api/auth/me.
+   Wrap the app in <AuthProvider> in
+   App.jsx inside BrowserRouter; hydrate the user via /me on mount (a 401 just means no session). ProtectedRoute, Navbar,
    AuthPage and Recover read auth from useAuth() instead of calling the auth API directly.
 3c. Wrap the app in <IconContext.Provider value={{ weight: 'regular' }}> (from @phosphor-icons/react) at the same level
    as <AuthProvider> and <Toaster>, so every Phosphor icon inherits the regular weight.
@@ -293,7 +301,7 @@ Pages:
      a vertically centered hero (system name, a one-line value prop, and both CTAs, center-aligned) above a responsive
      grid of capability/feature cards on a clean light background, with Soft-UI shadows (soft, diffused, low-contrast
      elevation via var(--shadow-accent); no hard borders or gray drop shadows) and a SINGLE accent color
-     (--color-accent #003F91) as the only chromatic emphasis (primary CTA fill, icon accents, highlights — everything
+     (--color-accent #C2410C) as the only chromatic emphasis (primary CTA fill, icon accents, highlights — everything
      else neutral). Minimal, modern, whitespace-generous; the brief "Layout style" may tune tone but not this structure. Required
      behavior independent of the chosen layout: the system name + a one-line value prop are present; two obvious hero CTAs — a primary "Get Started" (Phosphor ArrowRight)
      routing to /register (the AuthPage's Sign Up segment) and a secondary "Explore More" (variant="outline", Phosphor
@@ -314,13 +322,13 @@ Pages:
   b. AuthPage (routes /login AND /register) — PUBLIC: LAYOUT (FIXED) — render the page as ONE floating card centered
      on the public background, elevated with the signature accent shadow + rounded corners (rounded-2xl, overflow-hidden,
      ≈max-w-4xl), DIVIDED INTO TWO PARTS side by side on md+ (grid md:grid-cols-2, equal height): a SHOWCASE part — a
-     branded panel filled with --color-accent #003F91 (light text, AA contrast) showing the system name, a one-line value
+     branded panel filled with --color-accent #C2410C (light text, AA contrast) showing the system name, a one-line value
      prop, and 3-4 domain capabilities as Phosphor icon + label (managing [Entity1], recording [Entity2], tracking
      [Entity3], viewing Reports); NO form fields here — and a FORM part holding the segmented control + the active form.
      Below md it stacks to one column (showcase becomes a compact header above the form, or hidden; form full-width, px-4).
      The page combines Sign In and Sign Up via a segmented control at the top of the FORM part
      (shadcn Tabs styled as a segmented pill — "Sign In" with the Phosphor SignIn icon, "Sign Up" with the
-     UserPlus icon, the ACTIVE segment filled with --color-accent #003F91, exactly like the reference). /login opens
+     UserPlus icon, the ACTIVE segment filled with --color-accent #C2410C, exactly like the reference). /login opens
      with Sign In active, /register with Sign Up active; selecting a segment NAVIGATES to the matching route (derive the
      active segment from the path via useLocation, not local state alone) so the URL, back button, and deep links stay
      correct. Shared chrome: a "Back to home" (ArrowLeft) → /; NOT in ProtectedRoute; no Navbar. The segments swap the
@@ -345,40 +353,55 @@ Pages:
      statistics — lead with the stats, summary below:
      - Stat cards: a responsive grid (grid-cols-2 md:grid-cols-4) of AT LEAST FOUR shadcn Cards showing real metrics
        of your entities (totals per entity, today's counts, and at least one aggregated SUM/AVG such as total revenue),
-       each with a Phosphor icon and the accent color; numbers human-formatted (separators, currency where relevant).
+       each with a Phosphor icon and the accent color; numbers human-formatted in full with thousands separators (never compacted/abbreviated — no 1.2k or $1.2M), currency where relevant.
      - A summary block: a compact shadcn Table or short list (~5 rows) complementing the cards — e.g. recent records
        or a per-item totals breakdown.
+     - Quick Actions card (REQUIRED): put the summary block and a "Quick Actions" card side by side (e.g. lg:grid-cols-3,
+       summary at lg:col-span-2, Quick Actions at lg:col-span-1). The "Quick Actions" shadcn Card lists one button per
+       full-CRUD entity (Phosphor icon + "New [Entity]" label + one-line description); clicking opens that entity's create
+       form in a Dialog modal (reusing its [Entity]Form), and a successful create closes the modal and re-fetches
+       /api/reports/dashboard so the stats and summary update immediately.
      - All data comes from GET /api/reports/dashboard; show loading/error/empty states. Uses the Navbar and PageWrapper.
-  e. [Entity1]Page (route /[entity1route]) — INSERT, SELECT, UPDATE, and record-level DELETE: form fields per Entity1;
-     auto-calculate and show read-only any computed field; below the form, a shadcn Table with per-row Edit (PencilSimple)
-     and Delete (Trash). Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that
-     one record only (never the project/database).
-  f. [Entity2]Page (route /[entity2route]) — INSERT, SELECT, UPDATE, and record-level DELETE: an [Entity1] dropdown
-     (populated from the API) plus the remaining fields; date fields max = today; a Table with per-row Edit (PencilSimple)
-     and Delete (Trash). Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that
-     one record only (never the project/database).
-  g. [Entity3]Page (route /[entity3route]) — INSERT, SELECT, UPDATE, and record-level DELETE: an [Entity1] dropdown +
-     all fields; if a quantity-vs-stock rule applies, the quantity must not exceed the selected [Entity1]'s available
-     stock (fetch stock when the dropdown changes); date fields max = today; a Table with per-row Edit (PencilSimple) and
-     Delete (Trash). Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that one
+  e. [Entity1]Page (route /[entity1route]) — INSERT, SELECT, UPDATE, and record-level DELETE: TWO cards in a responsive
+     grid (lg:grid-cols-2) — a "New [Entity1]" card holding the create form (fields per Entity1; auto-calculate and show
+     read-only any computed field), and an "All [Entity1]s" card holding a searchable, paginated shadcn Table with per-row
+     Edit (PencilSimple) and Delete (Trash). (Each is a shadcn Card whose CardTitle is exactly "New [Entity1]" / "All
+     [Entity1]s".) Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that one record
+     only (never the project/database).
+  f. [Entity2]Page (route /[entity2route]) — INSERT, SELECT, UPDATE, and record-level DELETE: TWO cards in a responsive
+     grid (lg:grid-cols-2) — a "New [Entity2]" card holding the create form (an [Entity1] dropdown populated from the API
+     plus the remaining fields; date fields max = today), and an "All [Entity2]s" card holding a searchable, paginated Table
+     with per-row Edit (PencilSimple) and Delete (Trash). (Each is a shadcn Card whose CardTitle is exactly "New [Entity2]" /
+     "All [Entity2]s".) Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that one
      record only (never the project/database).
-  By DEFAULT every domain entity page follows this same Create + Edit (Dialog) + Delete (AlertDialog) pattern. EXCEPTION — per
-  the "Per-entity operations" brief field: an INSERT-ONLY entity's page is a create form ONLY (no edit/delete actions, no records
-  table unless a read is needed elsewhere); only full-CRUD entities get the Edit-dialog + Delete-confirm table.
+  g. [Entity3]Page (route /[entity3route]) — INSERT, SELECT, UPDATE, and record-level DELETE: TWO cards in a responsive
+     grid (lg:grid-cols-2) — a "New [Entity3]" card holding the create form (an [Entity1] dropdown + all fields; if a
+     quantity-vs-stock rule applies, the quantity must not exceed the selected [Entity1]'s available stock — fetch stock
+     when the dropdown changes; date fields max = today), and an "All [Entity3]s" card holding a searchable, paginated Table
+     with per-row Edit (PencilSimple) and Delete (Trash). (Each is a shadcn Card whose CardTitle is exactly "New [Entity3]" /
+     "All [Entity3]s".) Edit opens a pre-filled Dialog; Delete shows an AlertDialog confirmation, then DELETEs that one
+     record only (never the project/database).
+  By DEFAULT every domain entity page follows this same two-card ("New [Entity]" + "All [Entity]s") Create + Edit (Dialog) +
+  Delete (AlertDialog) pattern. EXCEPTION — per the "Per-entity operations" brief field: an INSERT-ONLY entity's page shows ONLY
+  the "New [Entity]" card (no edit/delete actions, no "All [Entity]s" table card unless a read is needed elsewhere); only
+  full-CRUD entities get the "All [Entity]s" card with the Edit-dialog + Delete-confirm table.
   h. ReportsPage (route /reports): shadcn Tabs, ONE TAB PER REPORT (those in the brief, or the two you designed), each
      rendering its results in a shadcn Table with that report's columns and a filter control (default: a date picker =
      today). Empty state with a Phosphor icon when no data. Each report has a Print button (Phosphor Printer, window.print())
      with a print-only header (system name, report title, "Printed on: [datetime]") and a print-only footer "Generated by
      [current user label]" (same label as the Navbar (i): "System Admin" for the admin, the user's role if role-based, else
      the full name); filters/nav get the .no-print class; the table prints clean (see DESIGN @media print).
-  i. Navbar (shared; rendered on all pages except Landing, the AuthPage (/login + /register), and Recover): links Dashboard, [Entity1], [Entity2],
-     [Entity3], Reports, Logout. Shows the logged-in user's identity (useAuth().user): their full name, or "System Admin" if
+  i. Navbar — a FLOATING PILL TOP-BAR (shared; rendered on all pages except Landing, the AuthPage (/login + /register), and
+     Recover). This edition's nav is a centered, rounded-full pill bar floating near the top (its own surface, rounded-full,
+     carrying the signature shadow), NOT a full-width flat bar: the brand sits at the left, the nav links sit inside the pill,
+     and the user identity + Logout at the right. Links: Dashboard, [Entity1], [Entity2], [Entity3], Reports, Logout. The
+     ACTIVE link is a filled accent pill (rounded-full, accent background, light text); inactive links are muted with a
+     rounded-full hover. Shows the logged-in user's identity (useAuth().user): their full name, or "System Admin" if
      they are the seeded admin account (identified via a role/isAdmin field or SEED_ADMIN_USERNAME); if the app is role-based
      (a `role` field — see AUTHORIZATION) also show the role beside the name (small accent Badge). Define the "current user
      label" once — "System Admin" for the admin, else the role when role-based, else the full name — reused by the Reports
-     print footer (h). The active link is visually distinct (accent
-     underline/background); Logout calls useAuth().logout() (POST /api/auth/logout) then → /; collapses to a hamburger
-     (List) on mobile as a vertical dropdown that closes on link click.
+     print footer (h). Logout calls useAuth().logout() (POST /api/auth/logout + clears context) then → /; on mobile the pill
+     collapses to a hamburger (List) that opens the links as a rounded dropdown sheet which closes on link click.
 5. ProtectedRoute: wrap all routes except / /login /register /recover; read { user, loading } from useAuth() — show a
    loading state while checking, redirect to /login if there is no user. Public pages never trigger an auth redirect.
 
@@ -412,12 +435,12 @@ network errors. One toast per result, auto-dismiss, dismissible, optional Phosph
 - Define a full color palette as CSS variables (index.css or Tailwind config): --color-bg, --color-surface,
   --color-accent, --color-text, --color-muted, --color-danger, --color-success, --shadow-accent. Use ONLY these
   variables — never hardcode hex inline. Signature shadow (exact value):
-  --shadow-accent: 0 4px 14px -4px rgba(0, 63, 145, 0.25);
+  --shadow-accent: 0 4px 14px -4px rgba(194, 65, 12, 0.25);
 - COLOR PALETTE: define every token on :root (the app is light-mode only — no dark theme, no theme toggle). The
-  background token MUST be exactly --color-bg: #F6F8FF. Choose the other tokens to pair tastefully and meet WCAG
+  background token MUST be exactly --color-bg: #FFF8F3. Choose the other tokens to pair tastefully and meet WCAG
   AA contrast.
-- SIGNATURE ACCENT (FIXED — do NOT choose): --color-accent is ALWAYS exactly #003F91 (no choose-from-a-list rule;
-  this single blue is the project's signature, identical in every build). Use the accent consistently for:
+- SIGNATURE ACCENT (FIXED — do NOT choose): --color-accent is ALWAYS exactly #C2410C (no choose-from-a-list rule;
+  this single orange is the project's signature, identical in every build). Use the accent consistently for:
   active nav link, primary buttons, focus rings, table row highlights, and badge backgrounds.
 - No purple gradients on white. No emoji — Phosphor icons only, consistent sizing (size 16 or 18).
 - SIGNATURE FONT (FIXED — do NOT choose): load the Google Font "Outfit" and apply it globally as the single app-wide
@@ -428,8 +451,8 @@ network errors. One toast per result, auto-dismiss, dismissible, optional Phosph
   on all numeric values (stat figures + numeric table columns); table column headers small (~0.78rem) UPPERCASE
   muted (--color-muted), ~0.04em letter-spacing, weight 600.
 - SIGNATURE ELEMENT (FIXED — must ALWAYS appear): every elevated surface — shadcn Cards (especially dashboard stat
-  cards), Dialog/AlertDialog modals, and the Navbar — uses the blue-tinted accent shadow var(--shadow-accent)
-  (0 4px 14px -4px rgba(0, 63, 145, 0.25), where 0,63,145 = #003F91), NEVER a neutral gray shadow. This soft blue
+  cards), Dialog/AlertDialog modals, and the Navbar — uses the orange-tinted accent shadow var(--shadow-accent)
+  (0 4px 14px -4px rgba(194, 65, 12, 0.25), where 194,65,12 = #C2410C), NEVER a neutral gray shadow. This soft orange
   glow is the project's one consistent visual quirk, present in every build; removed only inside @media print.
 - Entity (authenticated) forms — the create/edit forms on the [Entity1/2/3] pages — use identical padding (p-6),
   field gap (gap-4), label style, and input height for visual coherence inside the working app. This uniformity
@@ -440,13 +463,14 @@ network errors. One toast per result, auto-dismiss, dismissible, optional Phosph
   page-wrapper class (consistent max-width + horizontal padding). Button variants stay consistent everywhere:
   default (primary), destructive (delete confirm), outline (cancel). Tables wrapped in overflow-x-auto. Entity
   form cards max-w-xl centered (full-width with px-4 on mobile); public auth pages are exempt. Responsive via
-  Tailwind sm:/md:/lg: only.
+  Tailwind sm:/md:/lg: prefixes and/or CSS @media (min-width/max-width) queries.
 - @media print rules (in index.css): `.no-print { display:none !important }` on nav/filters/buttons; `.print-only`
   hidden normally and shown in print (the report header); report tables print plain black-on-white, no shadows/rounding, not clipped.
 
 === API INTEGRATION LAYER ===
-src/api/axiosClient.js: baseURL = import.meta.env.VITE_API_URL or http://localhost:5000/api; withCredentials:true; a
-  response interceptor that redirects to /login on 401 — BUT exempt the /api/auth/me hydration call and the public
+src/api/axiosClient.js: baseURL = import.meta.env.VITE_API_URL or http://localhost:5000/api; withCredentials:true on
+  every request (so the session cookie is sent); a response interceptor
+  that redirects to /login on 401 — BUT exempt the /api/auth/me hydration call and the public
   routes (/, /login, /register, /recover) so an unauthenticated visitor on a public page is never bounced to /login
   (checkAuth swallows that 401 and sets user=null).
 authAPI.js: register, login, logout, getMe, recoverVerify, recoverReset.
@@ -456,10 +480,14 @@ caller's catch shows the { error } message. AuthContext wraps authAPI and expose
 useAuth(); entity/report pages call their api modules directly.
 
 === SESSION-BASED AUTH ===
-express-session({ secret: process.env.SESSION_SECRET, resave:false, saveUninitialized:false, cookie:{ httpOnly:true } })
-(set secure + an appropriate sameSite in production). Session stores { userId, username }. The frontend axiosClient sends
-withCredentials on every request. AuthContext calls /me on load (401 → /login). Users self-register; password recovery
-uses the 4-digit code flow. An idempotent admin seed runs on startup (see SEEDING).
+Session management is via express-session with httpOnly cookies — NO JWTs. Configure express-session({ secret:
+process.env.SESSION_SECRET, resave:false, saveUninitialized:false, cookie:{ httpOnly:true } }) (set cookie.secure +
+sameSite in production). On register/login, start the session by storing { userId, username } on req.session (add
+`role` only if the domain uses roles) and return { data: { user } }. requireAuth returns 401 when req.session has no
+userId; req.session.userId is the source of truth for owner-scoping and aggregations. The frontend sets
+withCredentials:true on every axiosClient request so the session cookie is sent; logout() calls POST /api/auth/logout
+(which destroys the session) and clears context. AuthContext calls /me on load to hydrate the session (401 → /login). Users
+self-register; password recovery uses the 4-digit code flow. An idempotent admin seed runs on startup (see SEEDING).
 
 === REPORTS LOGIC (MongoDB aggregation ONLY) ===
 One aggregation pipeline per report — implement those in the brief (honoring name/shows/grouping/columns/filter, blanks
@@ -519,7 +547,7 @@ on mount (loading/disabled until ready) and refetch on selection change. Network
 All record tables use the shadcn Table in overflow-x-auto. Provide column headers, zebra/hover styling using the accent,
 and the loading/empty states. A client-side search box above each table; sortable columns (clicking a header toggles
 asc/desc with a chevron); pagination (or lazy loading) when a table can exceed ~25 rows. Human-format values (dates,
-numbers/currency with separators, booleans/enums as accent Badges). Every FULL-CRUD entity table has per-row Edit/Delete (INSERT-ONLY entities per the "Per-entity operations" field have none, and usually no table); Edit
+numbers/currency in full with thousands separators (never compacted/abbreviated — no 1.2k or $1.2M), booleans/enums as accent Badges). Every FULL-CRUD entity table has per-row Edit/Delete (INSERT-ONLY entities per the "Per-entity operations" field have none, and usually no table); Edit
 opens a pre-filled Dialog and Delete always goes through the AlertDialog confirmation before calling the record-level
 DELETE endpoint.
 
@@ -545,8 +573,8 @@ Passwords and recovery codes are ALWAYS bcrypt-hashed — never plaintext, never
 recovery code at register/reset). Never send the password hash or recoveryCodeHash to the client (use select:false or
 projection; strip them from any returned user). If you use select:false, the login and recover controllers MUST
 explicitly re-select the field (e.g. .select('+password')) before bcrypt.compare, or auth/recovery always fails. Validate and sanitize ALL input server-side; compute derived fields
-server-side only. Use httpOnly session cookies (secure + sameSite in production). CORS allows only CLIENT_URL with
-credentials:true — never a wildcard. Return generic auth/recovery errors (don't reveal whether a username/email exists);
+server-side only. Use httpOnly session cookies signed with a strong SESSION_SECRET (set cookie.secure + sameSite in
+production); never store the password or recovery hash in the session. CORS allows only CLIENT_URL with credentials:true — never a wildcard. Return generic auth/recovery errors (don't reveal whether a username/email exists);
 throttle login and recovery attempts (especially the 4-digit code). Never expose raw errors, stack traces, or DB internals.
 Guard NoSQL injection: use Mongoose model methods with typed/validated inputs; never build queries from raw request bodies.
 
@@ -603,8 +631,8 @@ APIs, no phantom imports.
 Backend follows a layered flow per request: route (thin: path + middleware → controller) → controller (request handling,
 validation, status codes, JSON) → model (schema + data access). Never skip or merge layers; cross-cutting logic (auth/role
 checks) lives in /middleware. Single source of truth per concern. Frontend dependency direction: pages/components →
-hooks/AuthContext → api modules → axiosClient → backend (UI never calls axios directly). Stateless backend (no server state
-beyond the session store; no module-level mutable caches). Clear API contract: noun resources, correct verbs/status codes,
+hooks/AuthContext → api modules → axiosClient → backend (UI never calls axios directly). Stateless backend (no server
+state beyond the session store; no module-level mutable caches). Clear API contract: noun resources, correct verbs/status codes,
 and the response shape with NO exceptions — { data } on success, { error } on failure (lists return { data:[...] }, single
 records { data:{...} }); the frontend reads response.data.data. Configuration is injected via env vars. Frontend and backend
 are independently runnable and communicate only over the HTTP API (no shared imports). Each file lives in the folder matching
