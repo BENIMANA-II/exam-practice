@@ -183,7 +183,7 @@ Unless data visibility is "shared", every domain entity ALSO carries an `owner` 
 3. One Mongoose model file per collection under /models.
 4. Controller layer: all handler logic in /controllers (one file per resource: auth, [entity1..3], reports). Each
    exports named async handlers with try/catch, validation, Mongoose calls, status codes, JSON responses. /routes
-   files are THIN: create router, map method+path to controller fn, attach middleware (requireAuth), export. No logic/DB in routes.
+   files are THIN: create router, map method+path to controller fn, attach middleware (requireAuth), export. No validation/logic/DB in routes — all validation lives in the controllers.
    Routes:
    - POST /api/auth/register  — validate fullName/email/phone/username/password server-side; hash password; reject duplicate
      username/email/phone (400); generate a random 4-digit recovery code, store only its bcrypt hash, return the plaintext code ONCE; then start the session → { data: { user } }.

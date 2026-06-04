@@ -309,8 +309,9 @@ the code, and keep ERD.md consistent with the models you actually build.
    reports.controller.js). Each controller exports named async handler functions containing the
    try/catch, validation, Mongoose calls, status codes, and JSON responses. The files under /routes
    are THIN — they only create the express.Router(), map each HTTP method + path to the matching
-   controller function, attach middleware (e.g. requireAuth), and export the router. No business
-   logic or database calls inline in route files. The routes below map to controller functions:
+   controller function, attach middleware (e.g. requireAuth), and export the router. No validation, business
+   logic, or database calls inline in route files — EVERY validation lives in the controllers, never in
+   /routes. The routes below map to controller functions:
    - POST   /api/auth/register           — create a new user account, then start the session
                                             (validate fullName, email, phone, username, password
                                              server-side; hash password; reject duplicate
@@ -1051,8 +1052,9 @@ SEED_ADMIN_USERNAME). State the chosen visibility mode in the assumptions summar
     route (thin: path + middleware + maps to controller)
       → controller (request handling, validation calls, status codes, JSON responses)
       → model (Mongoose schema + data access)
-  Never skip or merge layers: no DB calls in routes, no req/res handling in models, no business logic
-  in route files. Reusable cross-cutting logic (auth checks, role checks) lives in /middleware.
+  Never skip or merge layers: no validation or DB calls in routes, no req/res handling in models, no
+  business logic in route files — ALL validation lives in the controllers. Reusable cross-cutting logic
+  (auth checks, role checks) lives in /middleware.
 - Single source of truth per concern: one place defines each model, each validation rule, each route
   path constant, each formatting helper. Other files import from it rather than redefining.
 - Frontend follows a clear dependency direction:

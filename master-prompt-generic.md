@@ -88,7 +88,9 @@ context diagram) at the project root.
   For SQL, a model is a data-access module that exports plain functions (findAll/findById/create/update/
   remove) running the driver queries and returning plain objects. For MongoDB, a model is a Mongoose
   schema + model (schema definition only — no business logic). Either way, controllers hold the logic, the
-  model holds no HTTP. Reusable checks (auth) live in /middleware.
+  model holds no HTTP, and the routes dir holds NO validation or business logic — a route ONLY maps an HTTP
+  method+path to a controller function and attaches middleware; EVERY validation lives in the controllers,
+  never in /routes. Reusable checks (auth) live in /middleware.
 - RESPONSE SHAPE (no exceptions): `{ data }` on success, `{ error: "message" }` on failure.
   Status codes: 200/201/400/401/404/500. Protect all non-auth routes with a session-check middleware (401).
 - Auth endpoints: register, login, logout, me, recover/verify, recover/reset. Session management is via
@@ -137,6 +139,12 @@ context diagram) at the project root.
   FormField (Label + Input + inline error), StateBlock (loading/error/empty), a confirm dialog, and a
   pagination helper. Pages compose these.
 - Pages:
+  * Navbar (shown on every PROTECTED page) — a single shared nav bar that lists a link to EVERY protected
+    page: Dashboard, ONE link per entity page, and Reports. Each link MUST pair its own Phosphor icon with
+    its label — every page's icon appears on the Navbar with NO exceptions (Dashboard, each [Entity], and
+    Reports all have a distinct Phosphor icon). The active route is highlighted with the accent; the bar
+    also shows the current user and a Logout action, and collapses to a mobile menu on small screens (the
+    per-page icons stay visible).
   * LandingPage (/) — PUBLIC, its own minimal top bar (system name + Sign In), a hero with a primary
     "Get Started" (→ /register) and secondary "Explore More" (smooth-scroll to a #services section), and a
     capabilities section. Distinct layout; not wrapped in ProtectedRoute.
@@ -162,8 +170,8 @@ context diagram) at the project root.
   result, a loading spinner in the submit button, and "Unable to connect to the server. Please try again."
   on network errors. Refresh the affected list after create/update/delete.
 - React fundamentals to apply visibly: useState and useEffect in the pages that load/hold data; at least
-  one CUSTOM hook beyond useAuth (e.g. a useFetch/use[Entity] data hook) declared in its own file and
-  actually used; explicit event handlers (onClick/onChange/onSubmit) with arguments passed where needed;
+  one CUSTOM hook beyond useAuth (e.g. a useFetch/use[Entity] data hook) declared either in its own file
+  under src/hooks/ OR alongside the shared helpers in components/common.jsx, and actually used; explicit event handlers (onClick/onChange/onSubmit) with arguments passed where needed;
   list rendering with .map and stable keys.
 - Responsive, mobile-first design on every page: Tailwind flex and grid utilities with responsive
   breakpoints (Tailwind sm/md/lg prefixes and/or CSS @media queries); layouts reflow cleanly from phone to desktop and stay readable; interactive
@@ -224,7 +232,8 @@ context diagram) at the project root.
     └── src/
         ├── App.jsx ├── main.jsx ├── index.css
         ├── lib/ (utils.js, constants.js, validators.js, format.js   [+ a domain helper if needed])
-        ├── hooks/ (useFetch.js or a use[Entity].js custom hook)
+        ├── hooks/ (useFetch.js or a use[Entity].js custom hook — OPTIONAL; the custom hook MAY instead
+        │           live alongside the shared helpers in components/common.jsx)
         ├── context/ (AuthContext.jsx)
         ├── api/ (axiosClient.js, authAPI.js, [entity1]API.js, [entity2]API.js, [entity3]API.js, reportsAPI.js)
         ├── components/ (Navbar.jsx, ProtectedRoute.jsx, common.jsx,

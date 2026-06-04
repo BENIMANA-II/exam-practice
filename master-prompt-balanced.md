@@ -242,7 +242,7 @@ DATA OWNERSHIP & VISIBILITY.
 4. Controller layer: put ALL handler logic in /controllers (one file per resource: auth, [entity1..3], reports).
    Each exports named async handlers containing the try/catch, validation, Mongoose calls, status codes, and JSON
    responses. /routes files are THIN — create the router, map each method+path to its controller function, attach
-   middleware (requireAuth), and export. No business logic or DB calls in route files. Routes:
+   middleware (requireAuth), and export. No validation, business logic, or DB calls in route files — every validation lives in the controllers. Routes:
    - POST /api/auth/register   — validate fullName/email/phone/username/password server-side; hash the password;
        reject duplicate username/email/phone (400); generate a random 4-digit recovery code, store ONLY its bcrypt
        hash, return the plaintext code ONCE; then start the session and respond with { data: { user } }.
@@ -629,7 +629,7 @@ APIs, no phantom imports.
 
 === ARCHITECTURE ===
 Backend follows a layered flow per request: route (thin: path + middleware → controller) → controller (request handling,
-validation, status codes, JSON) → model (schema + data access). Never skip or merge layers; cross-cutting logic (auth/role
+validation, status codes, JSON) → model (schema + data access). Never skip or merge layers (routes hold NO validation — all validation lives in the controllers); cross-cutting logic (auth/role
 checks) lives in /middleware. Single source of truth per concern. Frontend dependency direction: pages/components →
 hooks/AuthContext → api modules → axiosClient → backend (UI never calls axios directly). Stateless backend (no server
 state beyond the session store; no module-level mutable caches). Clear API contract: noun resources, correct verbs/status codes,
