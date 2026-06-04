@@ -222,7 +222,7 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
         │
         ├── components/
         │   ├── Navbar.jsx            ← LEFT SIDEBAR RAIL: brand + Dashboard + entity links
-        │   │                           + Reports + user/role label + Logout + mobile drawer
+        │   │                           + Reports + user/role label + Logout (top-bar ↔ left-rail via container variant)
         │   ├── ProtectedRoute.jsx    ← reads useAuth(); redirects to /login if no user
         │   │
         │   └── ui/                   ← shadcn components generated in full (NOT npm)
@@ -433,7 +433,8 @@ the code, and keep ERD.md consistent with the models you actually build.
             scroll to it — presenting the core capabilities it offers (managing [Entity1], recording
             [Entity2], tracking [Entity3], and viewing Reports) — express these however the chosen layout
             best supports (cards, a list, callout blocks, sectioned copy, a stat strip, etc.)
-          * Fully responsive (collapses gracefully on mobile), uses ONLY the CSS-variable palette
+          * Fully responsive and mobile-first (single column on narrow screens, enhanced with Tailwind
+            container variants — see DESIGN & UI RULES), uses ONLY the CSS-variable palette
             and the global font, Phosphor icons only, no emoji, no placeholder lorem-ipsum text
           * This page must NOT be wrapped in ProtectedRoute and must NOT call any protected API
           * The shared Navbar is NOT rendered here; the LandingPage has its own minimal top bar
@@ -456,7 +457,9 @@ the code, and keep ERD.md consistent with the models you actually build.
       - LAYOUT (FIXED): render the AuthPage as a single FLOATING CARD centered both vertically and
         horizontally on the public background, elevated with the signature accent shadow and rounded
         corners (rounded-2xl, overflow-hidden), with a sensible max width (≈ max-w-4xl). The card is
-        DIVIDED INTO TWO PARTS sitting side by side on md+ (e.g. grid md:grid-cols-2, equal height):
+        DIVIDED INTO TWO PARTS that stack in one column on narrow screens and sit side by side, equal height,
+        once the card is wide enough — mark the card `@container` and switch with a container variant
+        (e.g. grid `@md:grid-cols-2`), NOT a viewport md: prefix:
           * SHOWCASE part — a branded panel filled with --color-accent (#047857), light text on the
             accent, presenting the system name, a one-line value proposition, and 3-4 of the domain's
             core capabilities (each a Phosphor icon + short label: managing [Entity1], recording
@@ -464,9 +467,10 @@ the code, and keep ERD.md consistent with the models you actually build.
             holds NO form fields. Phosphor icons only, no emoji, no lorem-ipsum.
           * FORM part — holds the segmented Sign In / Sign Up control and the active form (fields,
             validation, submit, and the recovery-code step), plus the "Back to home" link.
-        Responsive: below md the card stacks to ONE column — the showcase collapses to a compact header
-        (system name + tagline) above the form, or is hidden — and the form part takes the full width
-        (px-4 on mobile). The accent showcase panel keeps WCAG AA contrast (light text on #047857).
+        Mobile-first: the card starts as ONE column on narrow screens — the showcase is a compact header
+        (system name + tagline) above the form, or is hidden — with the form full width (px-4); the same
+        container variant then promotes it to the two-column showcase+form layout once the card has room.
+        The accent showcase panel keeps WCAG AA contrast (light text on #047857).
       - ONE page that combines Sign In and Sign Up via a segmented control at the top of the FORM part, exactly like the
         reference design: implement the control with the shadcn Tabs component styled as a segmented pill
         — two segments, "Sign In" (Phosphor SignIn icon) and "Sign Up" (Phosphor UserPlus icon), the
@@ -537,7 +541,9 @@ the code, and keep ERD.md consistent with the models you actually build.
       - This is where login and registration redirect on success
       - The Dashboard MUST present real statistics. Lead with a stats section, with the summary
         block as a secondary element below it.
-      - Stat cards: a responsive grid (e.g. grid-cols-2 md:grid-cols-4) of AT LEAST FOUR shadcn Cards
+      - Stat cards: a mobile-first grid on an `@container` wrapper — starts single-column (or two-up) on
+        narrow screens and steps up to four across at larger container widths via a container variant
+        (e.g. grid-cols-2 `@md:grid-cols-4`, never a viewport md: prefix) — of AT LEAST FOUR shadcn Cards
         showing key metrics of the REAL entities you built — each card has a Phosphor icon, a short
         label, and the metric value (large, using the accent palette). Choose meaningful metrics for
         the domain, for example: total [Entity1] records, total [Entity2] records, total [Entity3]
@@ -548,9 +554,11 @@ the code, and keep ERD.md consistent with the models you actually build.
         a breakdown that complements the cards — e.g. a "recent activity" mini-table of the latest few
         [Entity3] records, or a per-[Entity1] totals breakdown (top items by count/total). Keep it
         brief (about 5 rows).
-      - Quick Actions card (REQUIRED): place the summary block and a "Quick Actions" card side by side in
-        a responsive grid (e.g. lg:grid-cols-3 with the summary at lg:col-span-2 and Quick Actions at
-        lg:col-span-1). The Quick Actions card (a shadcn Card titled "Quick Actions") lists one button per
+      - Quick Actions card (REQUIRED): the summary block and a "Quick Actions" card stack on narrow screens
+        and sit side by side (summary ~2/3 width, Quick Actions ~1/3) once the container is wide enough —
+        on an `@container` wrapper via container variants (e.g. `@lg:grid-cols-3` with the summary at
+        `@lg:col-span-2` and Quick Actions at `@lg:col-span-1`), never viewport lg: prefixes. The Quick
+        Actions card (a shadcn Card titled "Quick Actions") lists one button per
         full-CRUD entity — each with a Phosphor icon, a "New [Entity]" label, and a one-line description.
         Clicking a button opens that entity's create form in a shadcn Dialog modal (reusing the same
         [Entity]Form component the entity page uses); on successful create the modal closes and the
@@ -561,7 +569,8 @@ the code, and keep ERD.md consistent with the models you actually build.
       - Uses the shared Navbar and PageWrapper like the other protected pages
 
    e. [Entity1]Page (route: /[entity1route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
-      - LAYOUT (FIXED): two cards in a responsive grid (lg:grid-cols-2) — a "New [Entity1]" card holding
+      - LAYOUT (FIXED): two cards that stack on narrow screens and sit side by side once the container is wide
+        enough — an `@container` wrapper with a container variant (`@lg:grid-cols-2`, never viewport lg:) — a "New [Entity1]" card holding
         the create form (left), and an "All [Entity1]s" card holding the records table (right). Each is a
         shadcn Card whose CardTitle is exactly "New [Entity1]" / "All [Entity1]s"
       - "New [Entity1]" card form fields: [list all Entity1 fields with types and constraints]
@@ -573,7 +582,8 @@ the code, and keep ERD.md consistent with the models you actually build.
         (this removes one row from the collection — it must never delete the project or database)
 
    f. [Entity2]Page (route: /[entity2route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
-      - LAYOUT (FIXED): two cards in a responsive grid (lg:grid-cols-2) — a "New [Entity2]" card holding
+      - LAYOUT (FIXED): two cards that stack on narrow screens and sit side by side once the container is wide
+        enough — an `@container` wrapper with a container variant (`@lg:grid-cols-2`, never viewport lg:) — a "New [Entity2]" card holding
         the create form (left), and an "All [Entity2]s" card holding the records table (right). Each is a
         shadcn Card whose CardTitle is exactly "New [Entity2]" / "All [Entity2]s"
       - "New [Entity2]" card form fields: [Entity1] dropdown (populated from API), [list remaining fields]
@@ -585,7 +595,8 @@ the code, and keep ERD.md consistent with the models you actually build.
         (this removes one row from the collection — it must never delete the project or database)
 
    g. [Entity3]Page (route: /[entity3route])  ← INSERT, SELECT, UPDATE, and record-level DELETE
-      - LAYOUT (FIXED): two cards in a responsive grid (lg:grid-cols-2) — a "New [Entity3]" card holding
+      - LAYOUT (FIXED): two cards that stack on narrow screens and sit side by side once the container is wide
+        enough — an `@container` wrapper with a container variant (`@lg:grid-cols-2`, never viewport lg:) — a "New [Entity3]" card holding
         the create form (left), and an "All [Entity3]s" card holding the records table (right). Each is a
         shadcn Card whose CardTitle is exactly "New [Entity3]" / "All [Entity3]s"
       - "New [Entity3]" card form fields: [Entity1] dropdown, [list all fields with types and constraints]
@@ -622,12 +633,13 @@ the code, and keep ERD.md consistent with the models you actually build.
 
    i. Navbar — a LEFT SIDEBAR RAIL (shared layout component, rendered on all pages except Landing, the
       AuthPage (/login + /register), and Recover). This edition's navigation is a vertical rail, NOT a top bar.
-      - A fixed vertical rail on the left edge on desktop (e.g. w-60, full viewport height, its own surface
+      - A fixed vertical rail on the left edge once the app shell is wide enough (e.g. w-60, full viewport height, its own surface
         carrying the signature shadow): the system name/brand pinned at the top, the nav links stacked
         vertically in the middle, and the user identity + Logout pinned at the bottom
       - Links (each rendered as an icon + label row): Dashboard, [Entity1 label], [Entity2 label],
         [Entity3 label], Reports, Logout
-      - The protected pages render in a content area to the RIGHT of the rail (e.g. lg:ml-60)
+      - The protected pages render in a content area to the RIGHT of the rail (offset by the rail width via a
+        container variant, e.g. `@lg:ml-60`, once the rail is shown — never a viewport lg: prefix)
       - Shows the logged-in user's identity (read from useAuth().user): display their full name. If
         the logged-in user is the seeded admin account (identify the admin via a role/isAdmin field on
         the User, or by matching SEED_ADMIN_USERNAME), display "System Admin" instead of the name. If
@@ -638,8 +650,12 @@ the code, and keep ERD.md consistent with the models you actually build.
       - Active link must be visually distinct (the active row filled with the accent, or an accent left-border bar)
       - Logout calls logout() from useAuth() (which calls POST /api/auth/logout and clears context
         user state), then redirects to /
-      - Responsive: on mobile the rail collapses to a slim top bar with a hamburger (List icon from
-        Phosphor) that opens the links as a slide-in left drawer; the drawer closes on link click
+      - Responsive (mobile-first, CONTAINER-variant reflow — no viewport breakpoints, no JS width logic, no
+        hamburger toggle): author the nav as a slim TOP BAR by default (narrow screens) — brand, then the links
+        in a horizontal row (overflow-x-auto if cramped), then the user identity + Logout — and use container
+        variants on the `@container` app shell to promote it to the fixed left vertical rail (flex-col, fixed,
+        w-60, full height) with the content offset beside it once the shell is wide enough. The links stay
+        visible at every width; no slide-in drawer.
 
 5. Protected routes: wrap all routes except / (LandingPage), /login and /register (both render the
    AuthPage), and /recover (RecoverPage) in a ProtectedRoute component that reads
@@ -757,9 +773,18 @@ the code, and keep ERD.md consistent with the models you actually build.
     Destructive actions (delete confirm): variant="destructive"
     Secondary/cancel buttons: variant="outline"
 - Tables must be wrapped in overflow-x-auto for horizontal scrolling on small screens.
-- Entity form cards: max-w-xl centered on desktop, full-width with px-4 on mobile. (Public auth
+- Entity form cards: max-w-xl, centered (mx-auto), with horizontal padding (px-4) so they are full-width on narrow screens. (Public auth
   pages are exempt — their layout is open per the rule above.)
-- Responsive breakpoints may be handled with Tailwind prefixes (sm:, md:, lg:) AND/OR CSS @media (min-width/max-width) queries in index.css — both are allowed; avoid inline styles.
+- RESPONSIVENESS IS MOBILE-FIRST AND DONE WITH TAILWIND CONTAINER QUERIES — never viewport breakpoints and
+  never intrinsic auto-sizing. Concretely: do NOT use Tailwind's viewport prefixes (sm:/md:/lg:/xl:), do NOT
+  write @media (min-width/max-width) queries, and do NOT use intrinsic-sizing tricks (no CSS grid
+  auto-fit/auto-fill/minmax, no clamp()/min()/max() to drive layout). Add the `@tailwindcss/container-queries`
+  plugin (pin its exact version in package.json and register it in tailwind.config.js `plugins`). Author EVERY
+  layout for the narrowest screen first — single column, stacked, full-width — with base utilities, then
+  progressively enhance using Tailwind's CONTAINER variants: mark the layout wrapper `@container` and step its
+  children up with container-width variants (e.g. `@md:grid-cols-4`, `@lg:grid-cols-2`, `@lg:col-span-2`).
+  These key off the nearest `@container` ancestor's width, NOT the viewport. The ONLY @media block allowed
+  anywhere is `@media print`. Avoid inline styles.
 - The LandingPage uses the SAME palette, font, and shadcn components as the rest of the app so the
   public page and the authenticated app feel like one product. Its hero may use the accent color as
   a background or highlight, but still drawn from the CSS variables — never a hardcoded hex value.
@@ -1044,6 +1069,10 @@ SEED_ADMIN_USERNAME). State the chosen visibility mode in the assumptions summar
     * Tailwind CSS v3 (NOT v4) — v4 changes config and PostCSS setup significantly. Provide the
       matching postcss.config.js and tailwind.config.js for v3, and the v3 @tailwind directives in
       index.css. Be explicit and consistent: this is a Tailwind v3 project.
+    * `@tailwindcss/container-queries` (pinned, v3-compatible) — REQUIRED: registered in
+      tailwind.config.js `plugins`, it provides the `@container` marker and `@sm:/@md:/@lg:` CONTAINER
+      variants that this prompt's mobile-first responsiveness depends on (see DESIGN & UI RULES). No
+      viewport breakpoints are used.
     * Use Vite + @vitejs/plugin-react versions compatible with React 18 and the Tailwind v3 toolchain.
     * Every import must resolve to a listed, installed dependency — no deprecated APIs, no phantom imports.
 
@@ -1168,7 +1197,7 @@ Frontend:
   23. frontend-project/jsconfig.json    (`@/*` path mapping for editor/resolver)
   24. frontend-project/postcss.config.js (Tailwind v3 + autoprefixer)
   25. frontend-project/.env.example
-  26. frontend-project/tailwind.config.js (Tailwind v3 config; content globs; theme tokens)
+  26. frontend-project/tailwind.config.js (Tailwind v3 config; content globs; theme tokens; `@tailwindcss/container-queries` registered in plugins)
   26b. frontend-project/index.html  (Vite HTML entry)
   27. frontend-project/src/index.css  (Tailwind v3 @tailwind directives + CSS variables + font import + @media print rules)
   28. frontend-project/src/lib/utils.js  (the `cn` helper using clsx + tailwind-merge)

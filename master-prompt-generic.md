@@ -126,8 +126,10 @@ context diagram) at the project root.
   filter to today. Also one /dashboard aggregation.
 
 === FRONTEND RULES ===
-- React 18 + Vite, react-router-dom v6, Tailwind CSS v3, shadcn/ui, Phosphor Icons (regular weight via a
-  single IconContext.Provider), Sonner toasts (one global <Toaster/>), axios. Pin exact versions.
+- React 18 + Vite, react-router-dom v6, Tailwind CSS v3 + the `@tailwindcss/container-queries` plugin
+  (registered in tailwind.config.js plugins — it powers the mobile-first container-query responsiveness),
+  shadcn/ui, Phosphor Icons (regular weight via a single IconContext.Provider), Sonner toasts
+  (one global <Toaster/>), axios. Pin exact versions.
 - Generate every shadcn component you import, in full, under src/components/ui/ (button, input, card,
   table, dialog, alert-dialog, badge, label, tabs, select, alert, sonner) with the cn() util and the
   `@/` alias in vite.config.js AND jsconfig.json. No phantom imports.
@@ -143,8 +145,9 @@ context diagram) at the project root.
     page: Dashboard, ONE link per entity page, and Reports. Each link MUST pair its own Phosphor icon with
     its label — every page's icon appears on the Navbar with NO exceptions (Dashboard, each [Entity], and
     Reports all have a distinct Phosphor icon). The active route is highlighted with the accent; the bar
-    also shows the current user and a Logout action, and collapses to a mobile menu on small screens (the
-    per-page icons stay visible).
+    also shows the current user and a Logout action. Responsive mobile-first via CONTAINER variants (no viewport
+    breakpoints, no JS, no hamburger): the links sit in a row on narrow screens (overflow-x-auto if cramped) and a
+    container variant on the `@container` shell adapts the bar as room grows; the per-page icons stay visible at every width.
   * LandingPage (/) — PUBLIC, its own minimal top bar (system name + Sign In), a hero with a primary
     "Get Started" (→ /register) and secondary "Explore More" (smooth-scroll to a #services section), and a
     capabilities section. Distinct layout; not wrapped in ProtectedRoute.
@@ -154,11 +157,11 @@ context diagram) at the project root.
   * RecoverPage (/recover) — PUBLIC, verify code -> set new password -> show the new one-time code.
   * DashboardPage (/dashboard) — PROTECTED, >=4 stat cards (counts + one SUM/AVG) and a recent-activity
     summary, from a single /api/reports/dashboard call. A "Quick Actions" card (REQUIRED) sits beside the
-    summary (e.g. lg:grid-cols-3, summary lg:col-span-2, Quick Actions lg:col-span-1) and lists one button
+    summary on an `@container` wrapper via container variants (`@lg:grid-cols-3`, summary `@lg:col-span-2`, Quick Actions `@lg:col-span-1`, never viewport lg:) and lists one button
     per full-CRUD entity (Phosphor icon + "New {Entity}" label + one-line description); clicking opens that
     entity's create form in a Dialog modal (reusing its {Entity}Form), and a successful create closes the
     modal and re-fetches /api/reports/dashboard so the stats refresh.
-  * One page per entity — TWO cards in a responsive grid (lg:grid-cols-2): a "New {Entity}" card holding
+  * One page per entity — TWO cards that stack on narrow screens and go two-up once the container is wide enough (`@container` wrapper, `@lg:grid-cols-2`, never viewport lg:): a "New {Entity}" card holding
     the create form, and an "All {Entity}s" card holding the searchable, sortable, paginated table (each
     card a shadcn Card with a CardTitle of exactly "New {Entity}" / "All {Entity}s"). Full-CRUD entities
     get a per-row Edit (Dialog) and Delete (AlertDialog); an INSERT-ONLY entity shows only the
@@ -173,9 +176,15 @@ context diagram) at the project root.
   one CUSTOM hook beyond useAuth (e.g. a useFetch/use[Entity] data hook) declared either in its own file
   under src/hooks/ OR alongside the shared helpers in components/common.jsx, and actually used; explicit event handlers (onClick/onChange/onSubmit) with arguments passed where needed;
   list rendering with .map and stable keys.
-- Responsive, mobile-first design on every page: Tailwind flex and grid utilities with responsive
-  breakpoints (Tailwind sm/md/lg prefixes and/or CSS @media queries); layouts reflow cleanly from phone to desktop and stay readable; interactive
-  elements keep visible hover and focus states.
+- Responsive, MOBILE-FIRST design on every page, done with TAILWIND CONTAINER QUERIES — never viewport
+  breakpoints and never intrinsic auto-sizing. Do NOT use Tailwind viewport prefixes (sm:/md:/lg:/xl:), do NOT
+  write @media (min-width/max-width), and do NOT use intrinsic-sizing tricks (no grid auto-fit/auto-fill/minmax,
+  no clamp()/min()/max() for layout). Add the `@tailwindcss/container-queries` plugin (pinned, registered in
+  tailwind.config.js plugins). Author each layout narrowest-first (single column, stacked, full-width) with base
+  utilities, then enhance with CONTAINER variants: mark the wrapper `@container` and step children up with
+  `@md:`/`@lg:` variants (e.g. `@md:grid-cols-4`, `@lg:grid-cols-2`, `@lg:col-span-2`), keyed off the nearest
+  `@container` ancestor's width, not the viewport. Layouts reflow cleanly from phone to desktop and stay readable;
+  interactive elements keep visible hover and focus states. The only @media block allowed is @media print.
 
 === VALIDATION (client AND server) ===
 - Name fields: letters, spaces, hyphens, apostrophes only — /^[A-Za-z]+([ '-][A-Za-z]+)*$/
@@ -228,7 +237,7 @@ context diagram) at the project root.
 │   └── middleware/ (requireAuth.js   [+ requireRole.js only if the domain needs roles])
 └── frontend-project/
     ├── package.json (pinned) ├── .env.example ├── vite.config.js ├── jsconfig.json
-    ├── postcss.config.js ├── tailwind.config.js ├── index.html
+    ├── postcss.config.js ├── tailwind.config.js (+ @tailwindcss/container-queries plugin) ├── index.html
     └── src/
         ├── App.jsx ├── main.jsx ├── index.css
         ├── lib/ (utils.js, constants.js, validators.js, format.js   [+ a domain helper if needed])

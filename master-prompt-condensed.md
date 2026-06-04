@@ -108,7 +108,7 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
     ├── vite.config.js                ← React plugin + `@/` path alias → src
     ├── jsconfig.json                 ← editor `@/*` path mapping (matches vite)
     ├── postcss.config.js             ← Tailwind v3 + autoprefixer
-    ├── tailwind.config.js            ← content globs, tokens
+    ├── tailwind.config.js            ← content globs, tokens, @tailwindcss/container-queries plugin
     ├── index.html                    ← Vite entry
     │
     └── src/
@@ -136,7 +136,7 @@ BENIMANA_Irakiza_Jean_Flaubert_National_Practical_Exam_2026/
         │
         ├── components/
         │   ├── Navbar.jsx            ← MINIMAL UNDERLINE TOP-BAR: brand + Dashboard + entity links
-        │   │                           + Reports + user/role label + Logout + mobile dropdown
+        │   │                           + Reports + user/role label + Logout (container-variant reflow, no dropdown)
         │   ├── ProtectedRoute.jsx    ← reads useAuth(); redirects to /login if no user
         │   │
         │   └── ui/                   ← shadcn components generated in full (NOT npm)
@@ -227,7 +227,7 @@ Pages:
      segment) and secondary "Explore More" (outline, Phosphor ArrowDown) that smooth-scrolls to the services section
      (id="services"; href="#services" or scrollIntoView, respect prefers-reduced-motion); communicates what the system
      does and its core capabilities in that services section (managing [Entity1], recording [Entity2], tracking [Entity3], viewing
-     Reports — expressed however the layout best supports); fully responsive; uses ONLY the CSS-variable palette + global
+     Reports — expressed however the layout best supports); fully responsive and mobile-first (Tailwind container variants — see DESIGN); uses ONLY the CSS-variable palette + global
      font; Phosphor icons only, no emoji, no lorem-ipsum. Own minimal top bar (system name left; Sign In right). Not in
      ProtectedRoute, no Navbar, no protected API.
   a2. PUBLIC PAGES MUST LOOK DISTINCTIVE: Landing, the combined AuthPage, and Recover must look meaningfully different from one another
@@ -239,11 +239,11 @@ Pages:
      public surfaces does NOT.
   b. AuthPage (routes /login AND /register) PUBLIC: LAYOUT (FIXED) — ONE floating card centered on the public background,
      elevated with the signature accent shadow + rounded corners (overflow-hidden, ~max-w-4xl), DIVIDED INTO TWO PARTS side
-     by side on md+ (grid md:grid-cols-2): a SHOWCASE part — a branded panel filled with --color-accent #BE123C (light text,
+     that stack on narrow screens and sit side by side once the card is wide enough — mark the card `@container`, switch via a container variant (grid `@md:grid-cols-2`, NOT viewport md:): a SHOWCASE part — a branded panel filled with --color-accent #BE123C (light text,
      AA contrast) showing the system name, a one-line value prop, and 3-4 domain capabilities as Phosphor icon + label
      (managing [Entity1], recording [Entity2], tracking [Entity3], viewing Reports), NO form fields — and a FORM part holding
-     the segmented control + active form. Below md stacks to one column (showcase → compact header above the form, or hidden;
-     form full-width px-4).
+     the segmented control + active form. Mobile-first: starts one column (showcase → compact header above the form, or hidden;
+     form full-width px-4), the same container variant promoting it to two columns once the card has room.
      The page combines Sign In + Sign Up via a segmented control at the top of the FORM part
      (shadcn Tabs styled as a segmented pill — "Sign In" w/ Phosphor SignIn icon, "Sign Up" w/ UserPlus icon, ACTIVE segment
      filled with --color-accent #BE123C, like the reference). /login opens Sign In active, /register Sign Up active; selecting
@@ -260,14 +260,14 @@ Pages:
      error on mismatch. Step 2 Reset — New Password + Confirm (match, min 6), POST /recover/reset → returns a NEW one-time code,
      show the same "Save your recovery code" step, then → /login. "Back to Sign In" link. Not in ProtectedRoute, no Navbar.
   d. DashboardPage (/dashboard) PROTECTED, post-login/register landing. MUST present real stats:
-     - Stat cards: responsive grid (grid-cols-2 md:grid-cols-4), ≥4 shadcn Cards of real metrics (totals per entity, today's
+     - Stat cards: mobile-first grid on an `@container` wrapper, single-column/two-up on narrow screens stepping to four across via a container variant (grid-cols-2 `@md:grid-cols-4`, never viewport md:), ≥4 shadcn Cards of real metrics (totals per entity, today's
        counts, ≥1 SUM/AVG e.g. total revenue), each Phosphor icon + accent, numbers in full with thousands separators (never compacted/abbreviated — no 1.2k or $1.2M).
      - Summary block: a compact shadcn Table or short list (~5 rows) complementing the cards (recent records or per-item totals).
-     - Quick Actions card (REQUIRED): summary + a "Quick Actions" card side by side (e.g. lg:grid-cols-3, summary lg:col-span-2, Quick Actions lg:col-span-1). The card lists one button per full-CRUD entity (Phosphor icon + "New [Entity]" label + one-line description); clicking opens that entity's create form in a Dialog modal (reusing its [Entity]Form), and a successful create closes the modal + re-fetches /api/reports/dashboard so stats/summary update immediately.
+     - Quick Actions card (REQUIRED): summary + a "Quick Actions" card stacked on narrow screens, side by side (summary ~2/3, Quick Actions ~1/3) once the container is wide enough — `@container` wrapper + container variants (`@lg:grid-cols-3`, summary `@lg:col-span-2`, Quick Actions `@lg:col-span-1`), never viewport lg:. The card lists one button per full-CRUD entity (Phosphor icon + "New [Entity]" label + one-line description); clicking opens that entity's create form in a Dialog modal (reusing its [Entity]Form), and a successful create closes the modal + re-fetches /api/reports/dashboard so stats/summary update immediately.
      - All data from GET /api/reports/dashboard; show loading/error/empty states. Uses Navbar + PageWrapper.
-  e. [Entity1]Page (/[entity1route]) INSERT/SELECT/UPDATE/record-DELETE: TWO cards in a responsive grid (lg:grid-cols-2) — a "New [Entity1]" card holding the create form (fields per Entity1; auto-calc + show read-only any computed field), and an "All [Entity1]s" card holding a searchable, paginated shadcn Table with per-row Edit (PencilSimple) + Delete (Trash) (each a shadcn Card with CardTitle exactly "New [Entity1]" / "All [Entity1]s"). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
-  f. [Entity2]Page (/[entity2route]) INSERT/SELECT/UPDATE/record-DELETE: TWO cards in a responsive grid (lg:grid-cols-2) — a "New [Entity2]" card holding the create form ([Entity1] dropdown from API + remaining fields; date fields max=today), and an "All [Entity2]s" card holding a searchable, paginated Table with per-row Edit (PencilSimple) + Delete (Trash) (each a shadcn Card with CardTitle exactly "New [Entity2]" / "All [Entity2]s"). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
-  g. [Entity3]Page (/[entity3route]) INSERT/SELECT/UPDATE/record-DELETE: TWO cards in a responsive grid (lg:grid-cols-2) — a "New [Entity3]" card holding the create form ([Entity1] dropdown + fields; if qty-vs-stock applies,
+  e. [Entity1]Page (/[entity1route]) INSERT/SELECT/UPDATE/record-DELETE: TWO cards that stack on narrow screens and go two-up once the container is wide enough (`@container` wrapper, `@lg:grid-cols-2`, never viewport lg:) — a "New [Entity1]" card holding the create form (fields per Entity1; auto-calc + show read-only any computed field), and an "All [Entity1]s" card holding a searchable, paginated shadcn Table with per-row Edit (PencilSimple) + Delete (Trash) (each a shadcn Card with CardTitle exactly "New [Entity1]" / "All [Entity1]s"). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
+  f. [Entity2]Page (/[entity2route]) INSERT/SELECT/UPDATE/record-DELETE: TWO cards that stack on narrow screens and go two-up once the container is wide enough (`@container` wrapper, `@lg:grid-cols-2`, never viewport lg:) — a "New [Entity2]" card holding the create form ([Entity1] dropdown from API + remaining fields; date fields max=today), and an "All [Entity2]s" card holding a searchable, paginated Table with per-row Edit (PencilSimple) + Delete (Trash) (each a shadcn Card with CardTitle exactly "New [Entity2]" / "All [Entity2]s"). Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
+  g. [Entity3]Page (/[entity3route]) INSERT/SELECT/UPDATE/record-DELETE: TWO cards that stack on narrow screens and go two-up once the container is wide enough (`@container` wrapper, `@lg:grid-cols-2`, never viewport lg:) — a "New [Entity3]" card holding the create form ([Entity1] dropdown + fields; if qty-vs-stock applies,
      qty ≤ available stock — fetch stock on dropdown change; date fields max=today), and an "All [Entity3]s" card holding a searchable, paginated Table with per-row Edit (PencilSimple) + Delete (Trash) (each a shadcn Card with CardTitle exactly "New [Entity3]" / "All [Entity3]s").
      Edit opens a pre-filled Dialog; Delete shows AlertDialog confirm then DELETEs that one record only (never project/DB).
   By DEFAULT every domain entity page follows this same two-card ("New [Entity]" + "All [Entity]s") Create + Edit (Dialog) + Delete (AlertDialog) pattern. EXCEPTION — per the "Per-entity operations" brief field: an INSERT-ONLY entity's page shows ONLY the "New [Entity]" card (no edit/delete, no "All [Entity]s" table card unless a read is needed elsewhere); only full-CRUD entities get the "All [Entity]s" card with the Edit-dialog + Delete-confirm table.
@@ -282,8 +282,8 @@ Pages:
      it (inactive links show a faint accent underline on hover) — underline only, never a filled background. Shows the logged-in user's identity (useAuth().user):
      full name, or "System Admin" if the seeded admin (identified via role/isAdmin or SEED_ADMIN_USERNAME); if role-based (a `role` field — see AUTHORIZATION)
      also show the role beside the name (small accent Badge). Define the "current user label" once — "System Admin" for admin, else role when role-based, else
-     full name — reused by the Reports print footer (h). Logout via useAuth().logout() (POST /api/auth/logout + clears context) then → /; collapses to a
-     hamburger (List) on mobile as a vertical dropdown that closes on link click.
+     full name — reused by the Reports print footer (h). Logout via useAuth().logout() (POST /api/auth/logout + clears context) then → /. Responsive
+     (mobile-first, CONTAINER-variant reflow — no viewport breakpoints, no JS, no hamburger): links sit in a horizontal row in the bar on narrow screens (overflow-x-auto if cramped), container variants on the `@container` shell relaxing spacing as room grows; links stay visible at every width, no dropdown.
 5. ProtectedRoute: wrap all routes except / /login /register /recover; read { user, loading } from useAuth() — show loading state,
    redirect to /login if no user. Public pages never trigger an auth redirect.
 
@@ -331,8 +331,13 @@ auto-dismiss, dismissible, optional Phosphor icon, no emoji. <Toaster/> mounted 
   design tokens + shadcn components. Authenticated pages
   share one page-wrapper (max-width + horizontal padding).
 - Button variants consistent everywhere: default (primary), destructive (delete confirm), outline (cancel). Tables wrapped
-  in overflow-x-auto. Entity form cards max-w-xl centered (full-width px-4 on mobile); public auth pages exempt. Responsive
-  via sm:/md:/lg: prefixes and/or CSS @media (min-width/max-width) queries.
+  in overflow-x-auto. Entity form cards max-w-xl centered (mx-auto, px-4 → full-width on narrow screens); public auth pages exempt.
+- RESPONSIVENESS IS MOBILE-FIRST VIA TAILWIND CONTAINER QUERIES — never viewport breakpoints, never intrinsic auto-sizing.
+  Do NOT use Tailwind viewport prefixes (sm:/md:/lg:/xl:), @media (min-width/max-width), or intrinsic-sizing tricks (no grid
+  auto-fit/auto-fill/minmax, no clamp()/min()/max() for layout). Add `@tailwindcss/container-queries` (pinned, in tailwind.config.js
+  plugins). Author every layout narrowest-first (single column, stacked, full-width), then enhance with CONTAINER variants: mark
+  the wrapper `@container` and step children up with `@md:`/`@lg:` variants (e.g. `@md:grid-cols-4`, `@lg:grid-cols-2`, `@lg:col-span-2`),
+  keyed off the nearest `@container` ancestor's width, not the viewport. The only @media block allowed is @media print.
 - @media print (index.css): `.no-print{display:none!important}` on nav/filters/buttons; `.print-only{display:none}` normally,
   `display:block` in print (the report header); report tables print plain black-on-white, no shadows/rounding, not clipped.
 
@@ -438,10 +443,10 @@ effects (abort/ignore stale on unmount).
 === STRICT LIBRARY RULES ===
 Backend only: express, cors, mongoose, bcryptjs, express-session, dotenv, nodemon (dev); express-rate-limit allowed solely for throttling.
 Frontend only: react, react-dom, react-router-dom, axios, tailwindcss, shadcn/ui, @phosphor-icons/react, sonner,
-and shadcn deps (class-variance-authority, clsx, tailwind-merge). MongoDB+Mongoose only for data. Phosphor icons only (regular weight via a single IconContext.Provider at the app root).
+shadcn deps (class-variance-authority, clsx, tailwind-merge), and @tailwindcss/container-queries (the Tailwind plugin powering the container-query responsiveness). MongoDB+Mongoose only for data. Phosphor icons only (regular weight via a single IconContext.Provider at the app root).
 No other deps (no moment/lodash/Redux/Zustand/other UI or chart libs) — solve with the allowed stack or note in
 assumptions. EXACT pinned versions in both package.json (no risky ^ majors): react-router-dom v6 (NOT v7); Tailwind v3 (NOT v4) with
-matching postcss.config.js + tailwind.config.js + v3 @tailwind directives; Vite + @vitejs/plugin-react compatible with React 18.
+matching postcss.config.js + tailwind.config.js + v3 @tailwind directives; @tailwindcss/container-queries (pinned, v3-compatible, in tailwind.config.js plugins); Vite + @vitejs/plugin-react compatible with React 18.
 Every import resolves to a listed, installed dep — no deprecated APIs, no phantom imports.
 
 === ARCHITECTURE ===
@@ -476,7 +481,7 @@ Backend: package.json ; .env.example ; server.js ; config/db.js ; config/seed.js
   models/User.js + one per entity ; controllers/{auth,[entity1..3],reports}.controller.js (reports incl. /dashboard handler) ;
   routes/{auth,[entity1..3],reports}.routes.js (reports = dashboard + per-report) ; middleware/requireAuth.js (+ requireRole.js only if roles needed)
 Frontend: package.json (pinned: React 18, react-router-dom v6, Tailwind v3) ; vite.config.js (React plugin + `@/`→src) ;
-  jsconfig.json (`@/*`) ; postcss.config.js (Tailwind v3 + autoprefixer) ; .env.example ; tailwind.config.js (v3) ; index.html (Vite entry) ;
+  jsconfig.json (`@/*`) ; postcss.config.js (Tailwind v3 + autoprefixer) ; .env.example ; tailwind.config.js (v3, @tailwindcss/container-queries in plugins) ; index.html (Vite entry) ;
   src/index.css (v3 directives + tokens + font + @media print) ; src/main.jsx (React render root) ; src/lib/utils.js (cn) ; src/components/ui/* (every imported shadcn comp,
   full) ; src/App.jsx (BrowserRouter + AuthProvider + routes + ProtectedRoute + global Toaster; includes <IconContext.Provider value={{ weight: 'regular' }}>; /login + /register both render AuthPage) ; src/context/AuthContext.jsx ;
   src/api/{axiosClient,authAPI,[entity1..3]API,reportsAPI}.js (reportsAPI incl. getDashboard) ; src/components/{Navbar,ProtectedRoute}.jsx ;
